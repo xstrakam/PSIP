@@ -22,3 +22,4 @@ C:\Users\matej\OneDrive - Slovenská technická univerzita v Bratislave\Document
 C:\Users\matej\OneDrive - Slovenská technická univerzita v Bratislave\Documents\FIIT\4. semester\PSIP\psip\psip\bin\Debug\net10.0-windows\SharpPcap.dll
 C:\Users\matej\OneDrive - Slovenská technická univerzita v Bratislave\Documents\FIIT\4. semester\PSIP\psip\psip\obj\Debug\net10.0-windows\psip.csproj.AssemblyReference.cache
 C:\Users\matej\OneDrive - Slovenská technická univerzita v Bratislave\Documents\FIIT\4. semester\PSIP\psip\psip\obj\Debug\net10.0-windows\psip.csproj.Up2Date
+C:\Users\matej\OneDrive - Slovenská technická univerzita v Bratislave\Documents\FIIT\4. semester\PSIP\psip\psip\obj\Debug\net10.0-windows\psip.sourcelink.json

@@ -8,10 +8,12 @@
         Title="MainWindow" Height="450" Width="800">
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>  <!-- comboboxy -->
+            <RowDefinition Height="Auto"/>  <!-- tlačidlá -->
+            <RowDefinition Height="*"/>     <!-- tabuľka štatistík -->
         </Grid.RowDefinitions>
+
+        <!-- výber portov -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="20,20,0,20">
             <Label Content="Port 1:" Width="60"/>
             <ComboBox Name="Port1ComboBox" Width="300" Margin="10,0" DisplayMemberPath="Description" />
@@ -19,11 +21,78 @@
             <ComboBox Name="Port2ComboBox" Width="300" DisplayMemberPath="Description" />
         </StackPanel>
         
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="90,0,70,0">
-            <Button Name="StartCaptureButton" Content="Start capture" Click="StartCaptureClick" Padding="5" Margin="0, 0, 10, 0"></Button>
-            <Button Name="StopCaptureButton" Content="Stop capture" Click="StopCaptureClick" Padding="5"></Button>
+        <!-- tlačidlá start/stop -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="90,0,70,10">
+            <Button Name="StartCaptureButton" Content="Start capture" Click="StartCaptureClick" Padding="5" Margin="0, 0, 10, 0"/>
+            <Button Name="StopCaptureButton" Content="Stop capture" Click="StopCaptureClick" Padding="5"/>
         </StackPanel>
-        
 
+        <!-- tabuľka štatistík -->
+        <Grid Grid.Row="2" Margin="20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>  <!-- header -->
+                <RowDefinition Height="Auto"/>  <!-- Total -->
+                <RowDefinition Height="Auto"/>  <!-- Ethernet2 -->
+                <RowDefinition Height="Auto"/>  <!-- IP -->
+                <RowDefinition Height="Auto"/>  <!-- ICMP -->
+                <RowDefinition Height="Auto"/>  <!-- TCP -->
+                <RowDefinition Height="Auto"/>  <!-- UDP -->
+            </Grid.RowDefinitions>
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="120"/>  <!-- label -->
+                <ColumnDefinition Width="120"/>  <!-- Port1 IN -->
+                <ColumnDefinition Width="120"/>  <!-- Port1 OUT -->
+                <ColumnDefinition Width="120"/>  <!-- Port2 IN -->
+                <ColumnDefinition Width="120"/>  <!-- Port2 OUT -->
+            </Grid.ColumnDefinitions>
+
+            <!-- header row -->
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="" />
+            <TextBlock Grid.Row="0" Grid.Column="1" Text="Port 1 IN"  FontWeight="Bold" TextAlignment="Center"/>
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="Port 1 OUT" FontWeight="Bold" TextAlignment="Center"/>
+            <TextBlock Grid.Row="0" Grid.Column="3" Text="Port 2 IN"  FontWeight="Bold" TextAlignment="Center"/>
+            <TextBlock Grid.Row="0" Grid.Column="4" Text="Port 2 OUT" FontWeight="Bold" TextAlignment="Center"/>
+
+            <!-- row labels -->
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Total"     Margin="0,2"/>
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Ethernet2" Margin="0,2"/>
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="IP"        Margin="0,2"/>
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="ICMP"      Margin="0,2"/>
+            <TextBlock Grid.Row="5" Grid.Column="0" Text="TCP"       Margin="0,2"/>
+            <TextBlock Grid.Row="6" Grid.Column="0" Text="UDP"       Margin="0,2"/>
+
+            <!-- Port 1 IN -->
+            <TextBlock x:Name="P1InTotal" Grid.Row="1" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P1InEth"   Grid.Row="2" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P1InIp"    Grid.Row="3" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P1InIcmp"  Grid.Row="4" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P1InTcp"   Grid.Row="5" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P1InUdp"   Grid.Row="6" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
+
+            <!-- Port 1 OUT -->
+            <TextBlock x:Name="P1OutTotal" Grid.Row="1" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P1OutEth"   Grid.Row="2" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P1OutIp"    Grid.Row="3" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P1OutIcmp"  Grid.Row="4" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P1OutTcp"   Grid.Row="5" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P1OutUdp"   Grid.Row="6" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
+
+            <!-- Port 2 IN -->
+            <TextBlock x:Name="P2InTotal" Grid.Row="1" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P2InEth"   Grid.Row="2" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P2InIp"    Grid.Row="3" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P2InIcmp"  Grid.Row="4" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P2InTcp"   Grid.Row="5" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P2InUdp"   Grid.Row="6" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
+
+            <!-- Port 2 OUT -->
+            <TextBlock x:Name="P2OutTotal" Grid.Row="1" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P2OutEth"   Grid.Row="2" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P2OutIp"    Grid.Row="3" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P2OutIcmp"  Grid.Row="4" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P2OutTcp"   Grid.Row="5" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P2OutUdp"   Grid.Row="6" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
+        </Grid>
     </Grid>
 </Window>

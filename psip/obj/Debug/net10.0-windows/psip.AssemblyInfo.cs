@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("psip")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+506b4409aabcbf3486d28557b4b565c07e8b2393")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+19c0f79ed91adcf03bc4a91e1791039cd27d795f")]
 [assembly: System.Reflection.AssemblyProductAttribute("psip")]
 [assembly: System.Reflection.AssemblyTitleAttribute("psip")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

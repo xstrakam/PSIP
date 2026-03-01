@@ -1,49 +1,33 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Net.Sockets;
-using System.Security.Cryptography;
-using System.Text;
+﻿using System.Security.Cryptography;
 using System.Windows;
-using System.Windows.Controls;
 using SharpPcap;
 using SharpPcap.LibPcap;
 using PacketDotNet;
 
 namespace psip
-{
-    public class PortDirectionStats
-    {
-        public long TotalFrames;
-        public long Ethernet2;
-        public long Ip;
-        public long Icmp;
-        public long Tcp;
-        public long Udp;
-    }
-    
-    public class PortStats
-    {
-        public PortDirectionStats In { get; } = new();
-        public PortDirectionStats Out { get; } = new();
-    }
 
+{
     public partial class MainWindow : Window
     {
         private LibPcapLiveDevice _port1, _port2;
 
         private readonly HashSet<string> _recentSent = new();
         private readonly Queue<string> _recentOrder = new();
-        private readonly object _recentLock = new();
-        private const int MaxRecent = 10_000;
+        private readonly Lock _recentLock = new();
+        private const int MaxRecent = 100;
         
-        private readonly PortStats _statsPort1 = new();
-        private readonly PortStats _statsPort2 = new();
-        private readonly object _statsLock = new();
+        private readonly Dictionary<string, long> _statsP1In = new();
+        private readonly Dictionary<string, long> _statsP1Out = new();
+        private readonly Dictionary<string, long> _statsP2In = new();
+        private readonly Dictionary<string, long> _statsP2Out = new();
+        private readonly List<Dictionary<string, long>> _allStats = new();
+        private readonly Lock _statsLock = new();
 
         public MainWindow()
         {
             InitializeComponent();
             InitializePorts();
+            InitializeStats();
 
             var ver = Pcap.SharpPcapVersion;
             Console.WriteLine("SharpPcap {0}", ver);
@@ -61,6 +45,21 @@ namespace psip
 
                 Port1ComboBox.Items.Add(live);
                 Port2ComboBox.Items.Add(live);
+            }
+        }
+        
+        private void InitializeStats()
+        {
+            var statNames = new [] {"TOTAL", "Ethernet2", "ARP", "IP", "ICMP", "TCP", "UDP", "HTTP"};
+            
+            _allStats.AddRange([_statsP1In, _statsP1Out, _statsP2In, _statsP2Out]);
+
+            foreach (var stats in _allStats)
+            {
+                foreach (var statName in statNames)
+                {
+                    stats[statName] = 0;
+                }
             }
         }
 
@@ -102,78 +101,93 @@ namespace psip
             _port2.Close();
         }
 
-        private static string MakeKey(LibPcapLiveDevice dev, ReadOnlySpan<byte> data)
+        private static string MakeKey(LibPcapLiveDevice device, ReadOnlySpan<byte> data)
         {
             var hash = MD5.HashData(data);
-            return dev.Name + ":" + Convert.ToHexString(hash);
+            return device.Name + ":" + Convert.ToHexString(hash);
         }
 
-        private PortStats GetStatsForPort(LibPcapLiveDevice dev)
+        private Dictionary<string, long> GetStatsForPort(LibPcapLiveDevice device, bool isIn)
         {
-            if (dev == _port1) return _statsPort1;
-            if (dev == _port2) return _statsPort2;
-            return _statsPort1;
+            if (device == _port1 && isIn) return _statsP1In;
+            if (device == _port1 && !isIn) return _statsP1Out;
+            if (device == _port2 && isIn) return _statsP2In;
+            return _statsP2Out;
         }
 
-        private void UpdateStats(PortDirectionStats stats, Packet packet, bool isPort1, bool isIn)
+        private void UpdateStats(Dictionary<string, long> stats, Packet packet, bool isPort1, bool isIn)
         {
             lock (_statsLock)
             {
-                stats.TotalFrames++;
+                stats["TOTAL"]++;
 
                 var eth = packet.Extract<EthernetPacket>();
-                if (eth != null) stats.Ethernet2++;
+                if (eth != null) stats["Ethernet2"]++;
+                
+                var arp = packet.Extract<ArpPacket>();
+                if (arp != null) stats["ARP"]++;
 
                 var ipv4 = packet.Extract<IPv4Packet>();
                 var ipv6 = packet.Extract<IPv6Packet>();
-                if (ipv4 != null || ipv6 != null) stats.Ip++;
+                if (ipv4 != null || ipv6 != null) stats["IP"]++;
 
                 var icmp4 = packet.Extract<IcmpV4Packet>();
-                if (icmp4 != null) stats.Icmp++;
+                if (icmp4 != null) stats["ICMP"]++;
                 
                 var tcp = packet.Extract<TcpPacket>();
-                if (tcp != null) stats.Tcp++;
+                if (tcp != null) stats["TCP"]++;
 
                 var udp = packet.Extract<UdpPacket>();
-                if (udp != null) stats.Udp++;
+                if (udp != null) stats["UDP"]++;
                 
                 Dispatcher.BeginInvoke(new Action(() =>
                 {
-                    if (isPort1 && isIn)
+                    lock (_statsLock)
                     {
-                        P1InTotal.Text = stats.TotalFrames.ToString();
-                        P1InEth.Text   = stats.Ethernet2.ToString();
-                        P1InIp.Text    = stats.Ip.ToString();
-                        P1InIcmp.Text  = stats.Icmp.ToString();
-                        P1InTcp.Text   = stats.Tcp.ToString();
-                        P1InUdp.Text   = stats.Udp.ToString();
-                    }
-                    else if (isPort1 && !isIn)
-                    {
-                        P1OutTotal.Text = stats.TotalFrames.ToString();
-                        P1OutEth.Text   = stats.Ethernet2.ToString();
-                        P1OutIp.Text    = stats.Ip.ToString();
-                        P1OutIcmp.Text  = stats.Icmp.ToString();
-                        P1OutTcp.Text   = stats.Tcp.ToString();
-                        P1OutUdp.Text   = stats.Udp.ToString();
-                    }
-                    else if (!isPort1 && isIn)
-                    {
-                        P2InTotal.Text = stats.TotalFrames.ToString();
-                        P2InEth.Text   = stats.Ethernet2.ToString();
-                        P2InIp.Text    = stats.Ip.ToString();
-                        P2InIcmp.Text  = stats.Icmp.ToString();
-                        P2InTcp.Text   = stats.Tcp.ToString();
-                        P2InUdp.Text   = stats.Udp.ToString();
-                    }
-                    else // !isPort1 && !isIn
-                    {
-                        P2OutTotal.Text = stats.TotalFrames.ToString();
-                        P2OutEth.Text   = stats.Ethernet2.ToString();
-                        P2OutIp.Text    = stats.Ip.ToString();
-                        P2OutIcmp.Text  = stats.Icmp.ToString();
-                        P2OutTcp.Text   = stats.Tcp.ToString();
-                        P2OutUdp.Text   = stats.Udp.ToString();
+                        if (isPort1 && isIn)
+                        {
+                            P1InTotal.Text = _statsP1In["TOTAL"].ToString();
+                            P1InEth.Text = _statsP1In["Ethernet2"].ToString();
+                            P1InArp.Text = _statsP1In["ARP"].ToString();
+                            P1InIp.Text = _statsP1In["IP"].ToString();
+                            P1InIcmp.Text = _statsP1In["ICMP"].ToString();
+                            P1InTcp.Text = _statsP1In["TCP"].ToString();
+                            P1InUdp.Text = _statsP1In["UDP"].ToString();
+                            P1InHttp.Text = _statsP1In["HTTP"].ToString();
+                        }
+                        else if (isPort1 && !isIn)
+                        {
+                            P1OutTotal.Text = _statsP1Out["TOTAL"].ToString();
+                            P1OutEth.Text = _statsP1Out["Ethernet2"].ToString();
+                            P1OutArp.Text = _statsP1Out["ARP"].ToString();
+                            P1OutIp.Text = _statsP1Out["IP"].ToString();
+                            P1OutIcmp.Text = _statsP1Out["ICMP"].ToString();
+                            P1OutTcp.Text = _statsP1Out["TCP"].ToString();
+                            P1OutUdp.Text = _statsP1Out["UDP"].ToString();
+                            P1OutHttp.Text = _statsP1Out["HTTP"].ToString();
+                        }
+                        else if (!isPort1 && isIn)
+                        {
+                            P2InTotal.Text = _statsP2In["TOTAL"].ToString();
+                            P2InEth.Text = _statsP2In["Ethernet2"].ToString();
+                            P2InArp.Text = _statsP2In["ARP"].ToString();
+                            P2InIp.Text = _statsP2In["IP"].ToString();
+                            P2InIcmp.Text = _statsP2In["ICMP"].ToString();
+                            P2InTcp.Text = _statsP2In["TCP"].ToString();
+                            P2InUdp.Text = _statsP2In["UDP"].ToString();
+                            P2InHttp.Text = _statsP2In["HTTP"].ToString();
+                        }
+                        else
+                        {
+                            P2OutTotal.Text = _statsP2Out["TOTAL"].ToString();
+                            P2OutEth.Text = _statsP2Out["Ethernet2"].ToString();
+                            P2OutArp.Text = _statsP2Out["ARP"].ToString();
+                            P2OutIp.Text = _statsP2Out["IP"].ToString();
+                            P2OutIcmp.Text = _statsP2Out["ICMP"].ToString();
+                            P2OutTcp.Text = _statsP2Out["TCP"].ToString();
+                            P2OutUdp.Text = _statsP2Out["UDP"].ToString();
+                            P2OutHttp.Text = _statsP2Out["HTTP"].ToString();
+                        }
                     }
                 }));
             }
@@ -195,15 +209,13 @@ namespace psip
                     return;
             }
 
-            var packet = PacketDotNet.Packet.ParsePacket(raw.LinkLayerType, raw.Data);
+            var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
             
-            var inStats = GetStatsForPort(port).In;
-            bool isPort1 = port == _port1;
+            var inStats = GetStatsForPort(port, isIn: true);
+            var isPort1 = port == _port1;
             UpdateStats(inStats, packet, isPort1, isIn: true);
 
             var targetPort = port == _port1 ? _port2 : _port1;
-            if (targetPort == null)
-                return;
 
             var outgoingKey = MakeKey(targetPort, data);
 
@@ -219,10 +231,10 @@ namespace psip
                 }
             }
             
-            var outStats = GetStatsForPort(targetPort).Out;
-            bool targetIsPort1 = targetPort == _port1;
+            var outStats = GetStatsForPort(targetPort, isIn: false);
+            var targetIsPort1 = targetPort == _port1;
+            
             UpdateStats(outStats, packet, targetIsPort1, isIn: false);
-
             targetPort.SendPacket(data);
 
             Console.WriteLine($"✓ [{port.Description}] → [{targetPort.Description}] {data.Length}B");

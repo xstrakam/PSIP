@@ -22,7 +22,8 @@
         
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="90,0,70,10">
             <Button Name="StartCaptureButton" Content="Start capture" Click="StartCaptureClick" Padding="5" Margin="0,0,10,0"/>
-            <Button Name="StopCaptureButton" Content="Stop capture" Click="StopCaptureClick" Padding="5"/>
+            <Button Name="StopCaptureButton" Content="Stop capture" Click="StopCaptureClick" Padding="5" Margin="0,0,10,0"/>
+            <Button Name="ResetStatsButton" Content="Reset stats" Click="ResetStatsClick" Padding="5"/>
         </StackPanel>
         
         <Grid Grid.Row="2" Margin="20">

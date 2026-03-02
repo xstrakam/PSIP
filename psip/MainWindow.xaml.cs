@@ -3,9 +3,9 @@ using System.Windows;
 using SharpPcap;
 using SharpPcap.LibPcap;
 using PacketDotNet;
+using SHA256 = System.Security.Cryptography.SHA256;
 
 namespace psip
-
 {
     public partial class MainWindow : Window
     {
@@ -14,7 +14,7 @@ namespace psip
         private readonly HashSet<string> _recentSent = new();
         private readonly Queue<string> _recentOrder = new();
         private readonly Lock _recentLock = new();
-        private const int MaxRecent = 100;
+        private const int MaxRecent = 1000;
         
         private readonly Dictionary<string, long> _statsP1In = new();
         private readonly Dictionary<string, long> _statsP1Out = new();
@@ -28,7 +28,7 @@ namespace psip
             InitializeComponent();
             InitializePorts();
             InitializeStats();
-
+  
             var ver = Pcap.SharpPcapVersion;
             Console.WriteLine("SharpPcap {0}", ver);
         }
@@ -101,10 +101,17 @@ namespace psip
             _port2.Close();
         }
 
+        // private static string MakeKey(LibPcapLiveDevice device, ReadOnlySpan<byte> data)
+        // {
+        //     var hash = MD5.HashData(data);
+        //     return device.Name + ":" + Convert.ToHexString(hash);
+        // }
+        
         private static string MakeKey(LibPcapLiveDevice device, ReadOnlySpan<byte> data)
         {
-            var hash = MD5.HashData(data);
-            return device.Name + ":" + Convert.ToHexString(hash);
+            var header = data.Slice(0, Math.Min(100, data.Length));  
+            var hash = SHA256.HashData(header);
+            return Convert.ToHexString(hash);
         }
 
         private Dictionary<string, long> GetStatsForPort(LibPcapLiveDevice device, bool isIn)
@@ -123,7 +130,7 @@ namespace psip
 
                 var eth = packet.Extract<EthernetPacket>();
                 if (eth != null) stats["Ethernet2"]++;
-                
+
                 var arp = packet.Extract<ArpPacket>();
                 if (arp != null) stats["ARP"]++;
 
@@ -133,64 +140,64 @@ namespace psip
 
                 var icmp4 = packet.Extract<IcmpV4Packet>();
                 if (icmp4 != null) stats["ICMP"]++;
-                
+
                 var tcp = packet.Extract<TcpPacket>();
                 if (tcp != null) stats["TCP"]++;
-
+                
                 var udp = packet.Extract<UdpPacket>();
                 if (udp != null) stats["UDP"]++;
-                
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    lock (_statsLock)
-                    {
-                        if (isPort1 && isIn)
-                        {
-                            P1InTotal.Text = _statsP1In["TOTAL"].ToString();
-                            P1InEth.Text = _statsP1In["Ethernet2"].ToString();
-                            P1InArp.Text = _statsP1In["ARP"].ToString();
-                            P1InIp.Text = _statsP1In["IP"].ToString();
-                            P1InIcmp.Text = _statsP1In["ICMP"].ToString();
-                            P1InTcp.Text = _statsP1In["TCP"].ToString();
-                            P1InUdp.Text = _statsP1In["UDP"].ToString();
-                            P1InHttp.Text = _statsP1In["HTTP"].ToString();
-                        }
-                        else if (isPort1 && !isIn)
-                        {
-                            P1OutTotal.Text = _statsP1Out["TOTAL"].ToString();
-                            P1OutEth.Text = _statsP1Out["Ethernet2"].ToString();
-                            P1OutArp.Text = _statsP1Out["ARP"].ToString();
-                            P1OutIp.Text = _statsP1Out["IP"].ToString();
-                            P1OutIcmp.Text = _statsP1Out["ICMP"].ToString();
-                            P1OutTcp.Text = _statsP1Out["TCP"].ToString();
-                            P1OutUdp.Text = _statsP1Out["UDP"].ToString();
-                            P1OutHttp.Text = _statsP1Out["HTTP"].ToString();
-                        }
-                        else if (!isPort1 && isIn)
-                        {
-                            P2InTotal.Text = _statsP2In["TOTAL"].ToString();
-                            P2InEth.Text = _statsP2In["Ethernet2"].ToString();
-                            P2InArp.Text = _statsP2In["ARP"].ToString();
-                            P2InIp.Text = _statsP2In["IP"].ToString();
-                            P2InIcmp.Text = _statsP2In["ICMP"].ToString();
-                            P2InTcp.Text = _statsP2In["TCP"].ToString();
-                            P2InUdp.Text = _statsP2In["UDP"].ToString();
-                            P2InHttp.Text = _statsP2In["HTTP"].ToString();
-                        }
-                        else
-                        {
-                            P2OutTotal.Text = _statsP2Out["TOTAL"].ToString();
-                            P2OutEth.Text = _statsP2Out["Ethernet2"].ToString();
-                            P2OutArp.Text = _statsP2Out["ARP"].ToString();
-                            P2OutIp.Text = _statsP2Out["IP"].ToString();
-                            P2OutIcmp.Text = _statsP2Out["ICMP"].ToString();
-                            P2OutTcp.Text = _statsP2Out["TCP"].ToString();
-                            P2OutUdp.Text = _statsP2Out["UDP"].ToString();
-                            P2OutHttp.Text = _statsP2Out["HTTP"].ToString();
-                        }
-                    }
-                }));
             }
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                lock (_statsLock)
+                {
+                    if (isPort1 && isIn)
+                    {
+                        P1InTotal.Text = _statsP1In["TOTAL"].ToString();
+                        P1InEth.Text = _statsP1In["Ethernet2"].ToString();
+                        P1InArp.Text = _statsP1In["ARP"].ToString();
+                        P1InIp.Text = _statsP1In["IP"].ToString();
+                        P1InIcmp.Text = _statsP1In["ICMP"].ToString();
+                        P1InTcp.Text = _statsP1In["TCP"].ToString();
+                        P1InUdp.Text = _statsP1In["UDP"].ToString();
+                        P1InHttp.Text = _statsP1In["HTTP"].ToString();
+                    }
+                    else if (isPort1 && !isIn)
+                    {
+                        P1OutTotal.Text = _statsP1Out["TOTAL"].ToString();
+                        P1OutEth.Text = _statsP1Out["Ethernet2"].ToString();
+                        P1OutArp.Text = _statsP1Out["ARP"].ToString();
+                        P1OutIp.Text = _statsP1Out["IP"].ToString();
+                        P1OutIcmp.Text = _statsP1Out["ICMP"].ToString();
+                        P1OutTcp.Text = _statsP1Out["TCP"].ToString();
+                        P1OutUdp.Text = _statsP1Out["UDP"].ToString();
+                        P1OutHttp.Text = _statsP1Out["HTTP"].ToString();
+                    }
+                    else if (!isPort1 && isIn)
+                    {
+                        P2InTotal.Text = _statsP2In["TOTAL"].ToString();
+                        P2InEth.Text = _statsP2In["Ethernet2"].ToString();
+                        P2InArp.Text = _statsP2In["ARP"].ToString();
+                        P2InIp.Text = _statsP2In["IP"].ToString();
+                        P2InIcmp.Text = _statsP2In["ICMP"].ToString();
+                        P2InTcp.Text = _statsP2In["TCP"].ToString();
+                        P2InUdp.Text = _statsP2In["UDP"].ToString();
+                        P2InHttp.Text = _statsP2In["HTTP"].ToString();
+                    }
+                    else
+                    {
+                        P2OutTotal.Text = _statsP2Out["TOTAL"].ToString();
+                        P2OutEth.Text = _statsP2Out["Ethernet2"].ToString();
+                        P2OutArp.Text = _statsP2Out["ARP"].ToString();
+                        P2OutIp.Text = _statsP2Out["IP"].ToString();
+                        P2OutIcmp.Text = _statsP2Out["ICMP"].ToString();
+                        P2OutTcp.Text = _statsP2Out["TCP"].ToString();
+                        P2OutUdp.Text = _statsP2Out["UDP"].ToString();
+                        P2OutHttp.Text = _statsP2Out["HTTP"].ToString();
+                    }
+                }
+            }));
         }
 
         private void OnPacketReceived(object sender, PacketCapture e)
@@ -206,7 +213,10 @@ namespace psip
             lock (_recentLock)
             {
                 if (_recentSent.Remove(incomingKey))
+                {
+                    Console.WriteLine($"Dropped duplicate: {incomingKey}");
                     return;
+                }
             }
 
             var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
@@ -237,7 +247,56 @@ namespace psip
             UpdateStats(outStats, packet, targetIsPort1, isIn: false);
             targetPort.SendPacket(data);
 
-            Console.WriteLine($"✓ [{port.Description}] → [{targetPort.Description}] {data.Length}B");
+            // Console.WriteLine($"[{port.Description}] -> [{targetPort.Description}] {data.Length}B");
+        }
+
+        private void ResetStatsClick(object sender, RoutedEventArgs e)
+        {
+            var statNames = new [] {"TOTAL", "Ethernet2", "ARP", "IP", "ICMP", "TCP", "UDP", "HTTP"};
+
+            foreach (var stats in _allStats)
+            {
+                foreach (var statName in statNames)
+                {
+                    stats[statName] = 0;
+                }
+            }
+            
+            P1InTotal.Text = "0";
+            P1InEth.Text = "0";
+            P1InArp.Text = "0";
+            P1InIp.Text = "0";
+            P1InIcmp.Text = "0";
+            P1InTcp.Text = "0";
+            P1InUdp.Text = "0";
+            P1InHttp.Text = "0";
+
+            P1OutTotal.Text = "0";
+            P1OutEth.Text = "0";
+            P1OutArp.Text = "0";
+            P1OutIp.Text = "0";
+            P1OutIcmp.Text = "0";
+            P1OutTcp.Text = "0";
+            P1OutUdp.Text = "0";
+            P1OutHttp.Text = "0";
+
+            P2InTotal.Text = "0";
+            P2InEth.Text = "0";
+            P2InArp.Text = "0";
+            P2InIp.Text = "0";
+            P2InIcmp.Text = "0";
+            P2InTcp.Text = "0";
+            P2InUdp.Text = "0";
+            P2InHttp.Text = "0";
+
+            P2OutTotal.Text = "0";
+            P2OutEth.Text = "0";
+            P2OutArp.Text = "0";
+            P2OutIp.Text = "0";
+            P2OutIcmp.Text = "0";
+            P2OutTcp.Text = "0";
+            P2OutUdp.Text = "0";
+            P2OutHttp.Text = "0";
         }
     }
 }

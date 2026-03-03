@@ -142,7 +142,15 @@ namespace psip
                 if (icmp4 != null) stats["ICMP"]++;
 
                 var tcp = packet.Extract<TcpPacket>();
-                if (tcp != null) stats["TCP"]++;
+                if (tcp != null)
+                {
+                    stats["TCP"]++;
+                    if (tcp.DestinationPort == 80 || tcp.DestinationPort == 443 ||
+                        tcp.SourcePort == 80 || tcp.SourcePort == 443)
+                    {
+                        stats["HTTP"]++;
+                    }
+                }
                 
                 var udp = packet.Extract<UdpPacket>();
                 if (udp != null) stats["UDP"]++;

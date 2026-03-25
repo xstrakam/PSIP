@@ -7,6 +7,13 @@ using SHA256 = System.Security.Cryptography.SHA256;
 
 namespace psip
 {
+    public class MacEntry
+    {
+        public string MacAddress { get; init; }
+        public int PortNumber { get; set; }
+        public int AgingTime { get; set; }
+    }
+    
     public partial class MainWindow : Window
     {
         private LibPcapLiveDevice _port1, _port2;
@@ -22,6 +29,7 @@ namespace psip
         private readonly Dictionary<string, long> _statsP2Out = new();
         private readonly List<Dictionary<string, long>> _allStats = new();
         private readonly Lock _statsLock = new();
+        private Dictionary<string, MacEntry> _macTable = new();
 
         public MainWindow()
         {
@@ -120,6 +128,44 @@ namespace psip
             if (device == _port1 && !isIn) return _statsP1Out;
             if (device == _port2 && isIn) return _statsP2In;
             return _statsP2Out;
+        }
+
+        private void LearnMAC(Packet packet, int portNumber)
+        {
+            var agingTime = 180;
+            
+            var eth = packet.Extract<EthernetPacket>();
+            if (eth == null) return;
+            
+            var srcMac= eth.SourceHardwareAddress.ToString();
+
+            if (_macTable.TryGetValue(srcMac, out var entry)){
+                entry.AgingTime = agingTime;
+                entry.PortNumber = portNumber;
+                
+            }
+            else
+            {
+                _macTable[srcMac] = new MacEntry
+                {
+                    MacAddress = srcMac,
+                    PortNumber = portNumber,
+                    AgingTime = agingTime
+                };
+            }
+            
+        }
+
+        private void ForwardMAC(Packet packet, int portNumber)
+        {
+            
+        }
+
+        private int GetPortNumber(LibPcapLiveDevice port)
+        {
+            if (port == _port1) return 1;
+            if (port == _port2) return 2;
+            return -1;
         }
 
         private void UpdateStats(Dictionary<string, long> stats, Packet packet, bool isPort1, bool isIn)
@@ -222,12 +268,14 @@ namespace psip
             {
                 if (_recentSent.Remove(incomingKey))
                 {
-                    Console.WriteLine($"Dropped duplicate: {incomingKey}");
+                    // Console.WriteLine($"Dropped duplicate: {incomingKey}");
                     return;
                 }
             }
 
             var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
+            
+            LearnMAC(packet, GetPortNumber(port));
             
             var inStats = GetStatsForPort(port, isIn: true);
             var isPort1 = port == _port1;

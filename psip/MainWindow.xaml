@@ -106,7 +106,7 @@
 
         <DataGrid Grid.Row="4" Margin="20,0,20,20"
                   Height="150"
-                  ItemsSource="{Binding MacTable}"
+                  Name="MacTableDataGrid"
                   AutoGenerateColumns="False"
                   IsReadOnly="True"
                   GridLinesVisibility="All">

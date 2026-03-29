@@ -31,7 +31,7 @@ namespace psip
             
             lock (_recentLock)
             {
-                if (_recentSent.Remove(key))
+                if (_recentSent.Contains(key))
                 {
                     return false;  // drop duplicate
                 }
@@ -51,9 +51,19 @@ namespace psip
         
         private static string MakeKey(ReadOnlySpan<byte> data, string portName)
         {
-            var header = data.Slice(0, Math.Min(100, data.Length));
-            var hash = SHA256.HashData(header);
+            // var header = data.Slice(0, Math.Min(100, data.Length));
+            var hash = SHA256.HashData(data); // change to 100byte header in case of performance issues
             return $"{portName}:{Convert.ToHexString(hash)}";
+        }
+        
+        public void FlushPort(LibPcapLiveDevice port)
+        {
+            var prefix = port.Name + ":";
+    
+            lock (_recentLock)
+            {
+                _recentSent.RemoveWhere(key => key.StartsWith(prefix));
+            }
         }
     }
 }

@@ -5,25 +5,28 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:psip"
         mc:Ignorable="d"
-        Title="MainWindow" Height="500" Width="800">
+        Title="MainWindow" Height="700" Width="800">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="20,20,0,20">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="20,20,20,10">
             <Label Content="Port 1:" Width="60"/>
             <ComboBox Name="Port1ComboBox" Width="300" Margin="10,0" DisplayMemberPath="Description"/>
             <Label Content="Port 2:" Width="60"/>
             <ComboBox Name="Port2ComboBox" Width="300" DisplayMemberPath="Description"/>
         </StackPanel>
         
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="90,0,70,10">
-            <Button Name="StartCaptureButton" Content="Start capture" Click="StartCaptureClick" Padding="5" Margin="0,0,10,0"/>
-            <Button Name="StopCaptureButton" Content="Stop capture" Click="StopCaptureClick" Padding="5" Margin="0,0,10,0"/>
-            <Button Name="ResetStatsButton" Content="Reset stats" Click="ResetStatsClick" Padding="5"/>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="20,0,20,10">
+            <Button Name="StartCaptureButton" Content="Start capture" Click="StartCaptureClick" Padding="8" Margin="0,0,5,0"/>
+            <Button Name="StopCaptureButton" Content="Stop capture" Click="StopCaptureClick" Padding="8" Margin="0,0,5,0"/>
+            <Button Name="ResetStatsButton" Content="Reset stats" Click="ResetStatsClick" Padding="8" Margin="0,0,5,0"/>
         </StackPanel>
         
         <Grid Grid.Row="2" Margin="20">
@@ -61,41 +64,73 @@
             <TextBlock Grid.Row="7" Grid.Column="0" Text="UDP" Margin="0,2"/>
             <TextBlock Grid.Row="8" Grid.Column="0" Text="HTTP" Margin="0,2"/>
 
-            <TextBlock x:Name="P1InTotal" Grid.Row="1" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1InEth" Grid.Row="2" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1InArp" Grid.Row="3" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1InIp" Grid.Row="4" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1InIcmp" Grid.Row="5" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1InTcp" Grid.Row="6" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1InUdp" Grid.Row="7" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1InHttp" Grid.Row="8" Grid.Column="1" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P1InTotal" Grid.Row="1" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1InEth" Grid.Row="2" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1InArp" Grid.Row="3" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1InIp" Grid.Row="4" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1InIcmp" Grid.Row="5" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1InTcp" Grid.Row="6" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1InUdp" Grid.Row="7" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1InHttp" Grid.Row="8" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
 
-            <TextBlock x:Name="P1OutTotal" Grid.Row="1" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1OutEth" Grid.Row="2" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1OutArp" Grid.Row="3" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1OutIp" Grid.Row="4" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1OutIcmp" Grid.Row="5" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1OutTcp" Grid.Row="6" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1OutUdp" Grid.Row="7" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P1OutHttp" Grid.Row="8" Grid.Column="2" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P1OutTotal" Grid.Row="1" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1OutEth" Grid.Row="2" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1OutArp" Grid.Row="3" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1OutIp" Grid.Row="4" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1OutIcmp" Grid.Row="5" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1OutTcp" Grid.Row="6" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1OutUdp" Grid.Row="7" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P1OutHttp" Grid.Row="8" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
 
-            <TextBlock x:Name="P2InTotal" Grid.Row="1" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2InEth" Grid.Row="2" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2InArp" Grid.Row="3" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2InIp" Grid.Row="4" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2InIcmp" Grid.Row="5" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2InTcp" Grid.Row="6" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2InUdp" Grid.Row="7" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2InHttp" Grid.Row="8" Grid.Column="3" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P2InTotal" Grid.Row="1" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2InEth" Grid.Row="2" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2InArp" Grid.Row="3" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2InIp" Grid.Row="4" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2InIcmp" Grid.Row="5" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2InTcp" Grid.Row="6" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2InUdp" Grid.Row="7" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2InHttp" Grid.Row="8" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
 
-            <TextBlock x:Name="P2OutTotal" Grid.Row="1" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2OutEth" Grid.Row="2" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2OutArp" Grid.Row="3" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2OutIp" Grid.Row="4" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2OutIcmp" Grid.Row="5" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2OutTcp" Grid.Row="6" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2OutUdp" Grid.Row="7" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
-            <TextBlock x:Name="P2OutHttp" Grid.Row="8" Grid.Column="4" Margin="0,2" TextAlignment="Center"/>
+            <TextBlock x:Name="P2OutTotal" Grid.Row="1" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2OutEth" Grid.Row="2" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2OutArp" Grid.Row="3" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2OutIp" Grid.Row="4" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2OutIcmp" Grid.Row="5" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2OutTcp" Grid.Row="6" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2OutUdp" Grid.Row="7" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+            <TextBlock x:Name="P2OutHttp" Grid.Row="8" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
         </Grid>
+        
+        <TextBlock Grid.Row="3" Text="MAC Table" FontWeight="Bold" FontSize="14"
+                   HorizontalAlignment="Center" Margin="0,20,0,10"/>
+
+        <DataGrid Grid.Row="4" Margin="20,0,20,20"
+                  Height="150"
+                  ItemsSource="{Binding MacTable}"
+                  AutoGenerateColumns="False"
+                  IsReadOnly="True"
+                  GridLinesVisibility="All">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="MAC Address" Binding="{Binding MacAddress}" Width="*"/>
+                <DataGridTextColumn Header="Port" Binding="{Binding PortNumber}" Width="80"/>
+                <DataGridTextColumn Header="Aging" Binding="{Binding AgingTime}" Width="80"/>
+            </DataGrid.Columns>
+        </DataGrid>
+        
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="20,0,20,10">
+            <Button Name="ClearMacTableButton"
+                    Content="Clear MAC"
+                    Click="ClearMacTableClick"
+                    Padding="8"
+                    Margin="0,0,10,0"/>
+            <Label Content="Aging:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBox Name="AgingTimeTextBox" Width="60" VerticalAlignment="Center" Margin="0,0,5,0"/>
+            <TextBlock Text="s" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <Button Name="SetAgingTimeButton"
+                    Content="Set aging time"
+                    Click="SetAgingTimeClick"
+                    Padding="8"
+                    Margin="0,0,10,0"/>
+        </StackPanel>
     </Grid>
 </Window>

@@ -1,39 +1,21 @@
-﻿using System.Security.Cryptography;
+﻿using System.Collections.ObjectModel;
+using System.Security.Cryptography;
 using System.Timers;
 using System.Windows;
+using System.ComponentModel;
 using SharpPcap;
 using SharpPcap.LibPcap;
 using PacketDotNet;
-using SHA256 = System.Security.Cryptography.SHA256;
+using System.Collections.Generic;
 
 namespace psip
 {
-    public class MacEntry
-    {
-        public string MacAddress { get; init; }
-        public int PortNumber { get; set; }
-        public int AgingTime { get; set; }
-    }
-
-    public class Port
-    {
-        public LibPcapLiveDevice Device { get; set; }
-        public int PortNumber { get; set; }
-        public PortStats Stats { get; set; }
-    }
-
-    public class PortStats
-    {
-        public Dictionary<string, long> In { get; set; } = new();
-        public Dictionary<string, long> Out { get; set; } = new();
-    }
-    
     public partial class MainWindow : Window
     {
         private LibPcapLiveDevice _port1, _port2;
         private List<LibPcapLiveDevice> _ports;
         
-        private int _agingTime = 188;
+        private int _agingTime = 180;
         private System.Timers.Timer _agingTimer;
         
         private readonly Dictionary<string, long> _statsP1In = new();
@@ -44,17 +26,20 @@ namespace psip
         private readonly List<Dictionary<string, long>> _allStats = new();
         private readonly Lock _statsLock = new();
         
-        private readonly Dictionary<string, MacEntry> _macTable = new();
+        private readonly ObservableCollection<MacEntry> _macTable = new();
         private readonly Lock _macTableLock = new();
 
         private readonly AntiLoopService _antiLoop = new();
 
+        public ObservableCollection<MacEntry> MacTable => _macTable;
+
         public MainWindow()
         {
             InitializeComponent();
+            DataContext = this;  
             InitializePorts();
             InitializeStats();
-  
+
             var ver = Pcap.SharpPcapVersion;
             Console.WriteLine("SharpPcap {0}", ver);
         }
@@ -72,8 +57,6 @@ namespace psip
                 Port1ComboBox.Items.Add(live);
                 Port2ComboBox.Items.Add(live);
             }
-
-            _ports = [_port1, _port2];
         }
         
         private void InitializeStats()
@@ -103,6 +86,7 @@ namespace psip
 
             _port1 = port1;
             _port2 = port2;
+            _ports = [_port1, _port2];
 
             _port1.Open(DeviceModes.Promiscuous, read_timeout: 1000);
             _port2.Open(DeviceModes.Promiscuous, read_timeout: 1000);
@@ -133,6 +117,30 @@ namespace psip
             _agingTimer?.Stop();
         }
         
+        private void ClearMacTableClick(object sender, RoutedEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                lock (_macTableLock)
+                {
+                    _macTable.Clear();
+                }
+            });
+        }
+
+        private void SetAgingTimeClick(object sender, RoutedEventArgs e)
+        {
+            if (int.TryParse(AgingTimeTextBox.Text, out var agingTime) && agingTime > 0)
+            {
+                SetAgingTime(agingTime);
+                AgingTimeTextBox.Text = ""; 
+            }
+            else
+            {
+                // if error
+            }
+        }
+        
         private void StartAgingTimer()
         {
             _agingTimer = new System.Timers.Timer(1000);  // 1s
@@ -143,25 +151,28 @@ namespace psip
 
         private void OnAgingTick(object? sender, ElapsedEventArgs e)
         {
-            lock (_macTableLock)
-            {   
-                List<string> toRemove = [];
-                foreach (var pair in _macTable)
+            Dispatcher.Invoke(() =>
+            {
+                lock (_macTableLock)
                 {
-                    _macTable[pair.Key].AgingTime--;
-                    
-                    if (_macTable[pair.Key].AgingTime <= 0) toRemove.Add(pair.Key);
-                }
+                    List<MacEntry> toRemove = [];
 
-                foreach (var key in toRemove) _macTable.Remove(key);
-            }
-        }
-        
-        private static string MakeKey(LibPcapLiveDevice device, ReadOnlySpan<byte> data)
-        {
-            var header = data.Slice(0, Math.Min(100, data.Length));  
-            var hash = SHA256.HashData(header);
-            return Convert.ToHexString(hash);
+                    foreach (var entry in _macTable)
+                    {
+                        entry.AgingTime--;
+
+                        if (entry.AgingTime <= 0)
+                        {
+                            toRemove.Add(entry);
+                        }
+                    }
+
+                    foreach (var entry in toRemove)
+                    {
+                        _macTable.Remove(entry);
+                    }
+                }
+            });
         }
 
         private Dictionary<string, long> GetStatsForPort(LibPcapLiveDevice device, bool isIn)
@@ -171,7 +182,6 @@ namespace psip
             if (device == _port2 && isIn) return _statsP2In;
             return _statsP2Out;
         }
-
 
         private void LearnMac(Packet packet, LibPcapLiveDevice port)
         {
@@ -184,36 +194,39 @@ namespace psip
 
             lock (_macTableLock)
             {
-                if (_macTable.TryGetValue(srcMac, out var entry)){
-                    entry.AgingTime = _agingTime;
-                    entry.PortNumber = portNumber; // toto riesi vymenu kablov
-                
+                var existing = _macTable.FirstOrDefault(e => e.MacAddress == srcMac);
+                if (existing != null)
+                {
+                    existing.PortNumber = portNumber;
+                    existing.AgingTime = _agingTime;
                 }
                 else
                 {
-                    _macTable[srcMac] = new MacEntry
+                    _macTable.Add(new MacEntry
                     {
                         MacAddress = srcMac,
                         PortNumber = portNumber,
                         AgingTime = _agingTime
-                    };
+                    });
                 }
             }
-            
-            
         }
 
         private void ForwardMac(Packet packet, ReadOnlySpan<byte> data, LibPcapLiveDevice srcPort)
         {
             var eth = packet.Extract<EthernetPacket>();
-
             var destMac = eth.DestinationHardwareAddress.ToString();
             
-            if (destMac == "ff:ff:ff:ff:ff:ff") SendUnknownUnicast(packet, data, srcPort);
+            if (destMac == "ff:ff:ff:ff:ff:ff")
+            {
+                SendUnknownUnicast(packet, data, srcPort);
+                return;
+            }
 
             lock (_macTableLock)
             {
-                if (_macTable.TryGetValue(destMac, out var entry))
+                var entry = _macTable.FirstOrDefault(e => e.MacAddress == destMac);
+                if (entry != null)
                 {
                     SendUnicast(packet, data, GetPortFromPortNumber(entry.PortNumber));
                 }
@@ -293,8 +306,6 @@ namespace psip
                 
                 var udp = packet.Extract<UdpPacket>();
                 if (udp != null) stats["UDP"]++;
-                
-                
             }
 
             Dispatcher.BeginInvoke(new Action(() =>

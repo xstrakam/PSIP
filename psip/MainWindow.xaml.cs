@@ -192,24 +192,27 @@ namespace psip
             var srcMac = eth.SourceHardwareAddress.ToString();
             var portNumber = GetPortNumberFromPort(port);
 
-            lock (_macTableLock)
+            Dispatcher.Invoke(() =>
             {
-                var existing = _macTable.FirstOrDefault(e => e.MacAddress == srcMac);
-                if (existing != null)
+                lock (_macTableLock)
                 {
-                    existing.PortNumber = portNumber;
-                    existing.AgingTime = _agingTime;
-                }
-                else
-                {
-                    _macTable.Add(new MacEntry
+                    var existing = _macTable.FirstOrDefault(e => e.MacAddress == srcMac);
+                    if (existing != null)
                     {
-                        MacAddress = srcMac,
-                        PortNumber = portNumber,
-                        AgingTime = _agingTime
-                    });
+                        existing.PortNumber = portNumber;
+                        existing.AgingTime = _agingTime;
+                    }
+                    else
+                    {
+                        _macTable.Add(new MacEntry
+                        {
+                            MacAddress = srcMac,
+                            PortNumber = portNumber,
+                            AgingTime = _agingTime
+                        });
+                    }
                 }
-            }
+            });
         }
 
         private void ForwardMac(Packet packet, ReadOnlySpan<byte> data, LibPcapLiveDevice srcPort)
@@ -370,7 +373,7 @@ namespace psip
             var raw = e.GetPacket();
             var data = raw.Data;
 
-            _antiLoop.CheckIncoming(data, port);
+            if (!_antiLoop.CheckIncoming(data, port)) return;
             
             var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
             

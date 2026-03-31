@@ -178,34 +178,29 @@ namespace psip
             return port;
         }
 
-        private void RestartAllCaptures()
+        private LibPcapLiveDevice RestartPort(LibPcapLiveDevice oldPort)
         {
-            if (_restartInProgress) return;
-            if (string.IsNullOrWhiteSpace(_port1Name) || string.IsNullOrWhiteSpace(_port2Name)) return;
+            var deviceName = oldPort.Name;
+            var portNumber = GetPortNumberFromPort(oldPort);
 
-            _restartInProgress = true;
+            StopPortSafely(oldPort);
 
-            try
-            {
-                StopPortSafely(_port1);
-                StopPortSafely(_port2);
+            var newPort = OpenPortByName(deviceName);
 
-                _port1 = OpenPortByName(_port1Name);
-                _port2 = OpenPortByName(_port2Name);
-                _ports = [_port1, _port2];
+            if (portNumber == 1)
+                _port1 = newPort;
+            else
+                _port2 = newPort;
 
-                _linkStates.Clear();
-                _disconnectTimes.Clear();
+            _ports = [_port1!, _port2!];
 
-                _linkStates[_port1] = PortLinkState.Up;
-                _linkStates[_port2] = PortLinkState.Up;
+            _linkStates.Remove(oldPort);
+            _disconnectTimes.Remove(oldPort);
+            _linkStates[newPort] = PortLinkState.Up;
 
-                _antiLoop.Clear();
-            }
-            finally
-            {
-                _restartInProgress = false;
-            }
+            _antiLoop.Clear();
+
+            return newPort;
         }
 
         private void CheckLinkState(LibPcapLiveDevice port)
@@ -213,7 +208,9 @@ namespace psip
             if (_restartInProgress) return;
 
             var nic = FindNetworkInterface(port);
-            var isUp = nic?.OperationalStatus == OperationalStatus.Up;
+            if (nic == null) return;
+
+            var isUp = nic.OperationalStatus == OperationalStatus.Up;
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var state = _linkStates.GetValueOrDefault(port, PortLinkState.Up);
 
@@ -222,7 +219,11 @@ namespace psip
                 case PortLinkState.Up when !isUp:
                     _linkStates[port] = PortLinkState.PendingDown;
                     _disconnectTimes[port] = now;
-                    // Console.WriteLine($"{port.Name} cable unplugged, waiting 5s...");
+                    break;
+
+                case PortLinkState.PendingDown when isUp:
+                    _linkStates[port] = PortLinkState.Up;
+                    _disconnectTimes.Remove(port);
                     break;
 
                 case PortLinkState.PendingDown when !isUp:
@@ -234,16 +235,21 @@ namespace psip
                     {
                         _linkStates[port] = PortLinkState.Down;
                         _disconnectTimes.Remove(port);
-                        // Console.WriteLine($"{port.Name} confirmed down after 5s");
                         ClearMacEntriesByPortNumber(GetPortNumberFromPort(port));
                     }
                     break;
                 }
 
-                case PortLinkState.PendingDown when isUp:
                 case PortLinkState.Down when isUp:
-                    // Console.WriteLine($"{port.Name} link restored -> full restart");
-                    RestartAllCaptures();
+                    _restartInProgress = true;
+                    try
+                    {
+                        RestartPort(port);
+                    }
+                    finally
+                    {
+                        _restartInProgress = false;
+                    }
                     break;
             }
         }

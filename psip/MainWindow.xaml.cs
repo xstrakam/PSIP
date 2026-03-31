@@ -1,55 +1,65 @@
-﻿using System.Collections.ObjectModel;
-using System.Security.Cryptography;
+﻿using System;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Net.NetworkInformation;
+using System.Text.RegularExpressions;
+using System.Threading;
 using System.Timers;
 using System.Windows;
-using System.ComponentModel;
+using PacketDotNet;
 using SharpPcap;
 using SharpPcap.LibPcap;
-using PacketDotNet;
-using System.Collections.Generic;
-using System.Net.NetworkInformation;
 
 namespace psip
 {
-    
-    public class MacEntry 
+    public class MacEntry
     {
-        public string MacAddress { get; set; } = "";
+        public string MacAddress { get; init; } = "";
         public int PortNumber { get; set; }
         public int AgingTime { get; set; }
     }
+
     public partial class MainWindow : Window
     {
-        private LibPcapLiveDevice _port1, _port2;
-        private List<LibPcapLiveDevice> _ports;
-        private bool _port1WasUp = true;
-        private bool _port2WasUp = true;
-        
+        private LibPcapLiveDevice? _port1;
+        private LibPcapLiveDevice? _port2;
+        private List<LibPcapLiveDevice> _ports = [];
+
+        private string _port1Name = "";
+        private string _port2Name = "";
+
         private int _agingTime = 180;
-        private System.Timers.Timer _agingTimer;
-        private System.Timers.Timer _guiRefreshTimer;
-        
+        private System.Timers.Timer? _agingTimer;
+        private System.Timers.Timer? _guiRefreshTimer;
+
         private readonly Dictionary<string, long> _statsP1In = new();
         private readonly Dictionary<string, long> _statsP1Out = new();
         private readonly Dictionary<string, long> _statsP2In = new();
         private readonly Dictionary<string, long> _statsP2Out = new();
-        
-        private readonly List<Dictionary<string, long>> _allStats = new();
+
+        private readonly List<Dictionary<string, long>> _allStats = [];
         private readonly Lock _statsLock = new();
-        
+
         private readonly Dictionary<string, MacEntry> _macTable = new();
         private readonly Lock _macTableLock = new();
         private readonly ObservableCollection<MacEntry> _macTableItems = new();
 
         private readonly AntiLoopService _antiLoop = new();
 
+        private enum PortLinkState { Up, PendingDown, Down }
+        private readonly Dictionary<LibPcapLiveDevice, PortLinkState> _linkStates = new();
+        private readonly Dictionary<LibPcapLiveDevice, long> _disconnectTimes = new();
+
+        private volatile bool _restartInProgress = false;
+        private long _lastRestartMs = 0;
+
         public MainWindow()
         {
             InitializeComponent();
-            
+
             MacTableDataGrid.ItemsSource = _macTableItems;
-            DataContext = this;  
-            
+            DataContext = this;
+
             InitializePorts();
             InitializeStats();
 
@@ -62,7 +72,7 @@ namespace psip
             Port1ComboBox.Items.Clear();
             Port2ComboBox.Items.Clear();
 
-            var captureDevices = CaptureDeviceList.Instance;
+            var captureDevices = CaptureDeviceList.New();
             foreach (var captureDevice in captureDevices)
             {
                 if (captureDevice is not LibPcapLiveDevice live) continue;
@@ -71,11 +81,11 @@ namespace psip
                 Port2ComboBox.Items.Add(live);
             }
         }
-        
+
         private void InitializeStats()
         {
-            var statNames = new [] {"TOTAL", "Ethernet2", "ARP", "IP", "ICMP", "TCP", "UDP", "HTTP"};
-            
+            var statNames = new[] { "TOTAL", "Ethernet2", "ARP", "IP", "ICMP", "TCP", "UDP", "HTTP" };
+
             _allStats.AddRange([_statsP1In, _statsP1Out, _statsP2In, _statsP2Out]);
 
             foreach (var stats in _allStats)
@@ -93,23 +103,30 @@ namespace psip
                 Port2ComboBox.SelectedItem is not LibPcapLiveDevice port2)
                 return;
 
+            if (port1.Name == port2.Name)
+                return;
+
             Port1ComboBox.IsEnabled = false;
             Port2ComboBox.IsEnabled = false;
             StartCaptureButton.IsEnabled = false;
 
             _port1 = port1;
             _port2 = port2;
+            _port1Name = port1.Name;
+            _port2Name = port2.Name;
             _ports = [_port1, _port2];
 
-            _port1.Open(DeviceModes.Promiscuous, read_timeout: 1000);
-            _port2.Open(DeviceModes.Promiscuous, read_timeout: 1000);
+            OpenPort(_port1);
+            OpenPort(_port2);
 
-            _port1.OnPacketArrival += OnPacketReceived;
-            _port2.OnPacketArrival += OnPacketReceived;
+            _linkStates.Clear();
+            _disconnectTimes.Clear();
 
-            _port1.StartCapture();
-            _port2.StartCapture();
-            
+            foreach (var port in _ports)
+            {
+                _linkStates[port] = PortLinkState.Up;
+            }
+
             StartAgingTimer();
             StartGuiRefreshTimer();
         }
@@ -120,67 +137,163 @@ namespace psip
             Port2ComboBox.IsEnabled = true;
             StartCaptureButton.IsEnabled = true;
 
-            _port1?.OnPacketArrival -= OnPacketReceived;
-            _port1?.StopCapture();
-            _port1?.Close();
-
-            _port2?.OnPacketArrival -= OnPacketReceived;
-            _port2?.StopCapture();
-            _port2?.Close();
-            
             _agingTimer?.Stop();
             _guiRefreshTimer?.Stop();
+
+            StopPortSafely(_port1);
+            StopPortSafely(_port2);
+
+            _ports.Clear();
+            _linkStates.Clear();
+            _disconnectTimes.Clear();
+            _antiLoop.Clear();
         }
-        
-        private void CheckLinkState(LibPcapLiveDevice device, ref bool wasUp)
+
+        private void OpenPort(LibPcapLiveDevice port)
         {
-            var nic = NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(n => n.Name == device.Interface?.FriendlyName);
-
-            if (nic == null) return;
-
-            bool isUp = nic.OperationalStatus == OperationalStatus.Up;
-
-            if (wasUp && !isUp)
-            {
-                ClearMacEntries(device);
-                Console.WriteLine($"{device.Name} disconnected!"); 
-            }
-            
-            wasUp = isUp;
+            port.Open(DeviceModes.Promiscuous, read_timeout: 500);
+            port.OnPacketArrival -= OnPacketReceived;
+            port.OnPacketArrival += OnPacketReceived;
+            port.StartCapture();
         }
-        
+
+        private void StopPortSafely(LibPcapLiveDevice? port)
+        {
+            if (port == null) return;
+
+            try { port.OnPacketArrival -= OnPacketReceived; } catch { }
+            try { port.StopCapture(); } catch { }
+            try { port.Close(); } catch { }
+        }
+
+        private LibPcapLiveDevice OpenPortByName(string deviceName)
+        {
+            var freshList = CaptureDeviceList.New();
+
+            var port = freshList
+                .OfType<LibPcapLiveDevice>()
+                .First(d => d.Name == deviceName);
+
+            OpenPort(port);
+            return port;
+        }
+
+        private void RestartAllCaptures()
+        {
+            if (_restartInProgress) return;
+            if (string.IsNullOrWhiteSpace(_port1Name) || string.IsNullOrWhiteSpace(_port2Name)) return;
+
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            if (now - _lastRestartMs < 1500) return;
+
+            _restartInProgress = true;
+
+            try
+            {
+                // Console.WriteLine("Restarting all captures...");
+
+                StopPortSafely(_port1);
+                StopPortSafely(_port2);
+
+                Thread.Sleep(1200);
+
+                var newPort1 = OpenPortByName(_port1Name);
+                var newPort2 = OpenPortByName(_port2Name);
+
+                _port1 = newPort1;
+                _port2 = newPort2;
+                _ports = [_port1, _port2];
+
+                _linkStates.Clear();
+                _disconnectTimes.Clear();
+
+                _linkStates[_port1] = PortLinkState.Up;
+                _linkStates[_port2] = PortLinkState.Up;
+
+                // ClearWholeMacTable();
+                _antiLoop.Clear();
+
+                _lastRestartMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                // Console.WriteLine("All captures restarted");
+            }
+            catch (Exception ex)
+            {
+                // Console.WriteLine($"RestartAllCaptures failed: {ex.Message}");
+            }
+            finally
+            {
+                _restartInProgress = false;
+            }
+        }
+
+        private void CheckLinkState(LibPcapLiveDevice port)
+        {
+            if (_restartInProgress) return;
+
+            var nic = FindNetworkInterface(port);
+            var isUp = nic?.OperationalStatus == OperationalStatus.Up;
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var state = _linkStates.GetValueOrDefault(port, PortLinkState.Up);
+
+            switch (state)
+            {
+                case PortLinkState.Up when !isUp:
+                    _linkStates[port] = PortLinkState.PendingDown;
+                    _disconnectTimes[port] = now;
+                    // Console.WriteLine($"{port.Name} cable unplugged, waiting 5s...");
+                    break;
+
+                case PortLinkState.PendingDown when !isUp:
+                {
+                    if (!_disconnectTimes.TryGetValue(port, out var downSince))
+                        break;
+
+                    if (now - downSince >= 5000)
+                    {
+                        _linkStates[port] = PortLinkState.Down;
+                        _disconnectTimes.Remove(port);
+                        // Console.WriteLine($"{port.Name} confirmed down after 5s");
+                        ClearMacEntriesByPortNumber(GetPortNumberFromPort(port));
+                    }
+                    break;
+                }
+
+                case PortLinkState.PendingDown when isUp:
+                case PortLinkState.Down when isUp:
+                    // Console.WriteLine($"{port.Name} link restored -> full restart");
+                    RestartAllCaptures();
+                    break;
+            }
+        }
+
         private void ClearMacTableClick(object sender, RoutedEventArgs e)
         {
-            lock (_macTableLock)
-            {
-                _macTable.Clear();
-            }
+            ClearWholeMacTable();
+            _antiLoop.Clear();
         }
 
         private void SetAgingTimeClick(object sender, RoutedEventArgs e)
         {
             if (int.TryParse(AgingTimeTextBox.Text, out var agingTime) && agingTime > 0)
             {
-                SetAgingTime(agingTime);
-                AgingTimeTextBox.Text = ""; 
-            }
-            else
-            {
-                // if error
+                _agingTime = agingTime;
+                AgingTimeTextBox.Text = "";
             }
         }
-        
+
         private void StartAgingTimer()
         {
-            _agingTimer = new System.Timers.Timer(1000);  // 1s
+            _agingTimer?.Stop();
+            _agingTimer = new System.Timers.Timer(1000);
             _agingTimer.Elapsed += OnAgingTick;
             _agingTimer.AutoReset = true;
             _agingTimer.Start();
         }
-        
+
         private void StartGuiRefreshTimer()
         {
-            _guiRefreshTimer = new System.Timers.Timer(100); 
+            _guiRefreshTimer?.Stop();
+            _guiRefreshTimer = new System.Timers.Timer(100);
             _guiRefreshTimer.Elapsed += OnGuiRefreshTick;
             _guiRefreshTimer.AutoReset = true;
             _guiRefreshTimer.Start();
@@ -188,34 +301,35 @@ namespace psip
 
         private Dictionary<string, long> GetStatsForPort(LibPcapLiveDevice device, bool isIn)
         {
-            if (device == _port1 && isIn) return _statsP1In;
-            if (device == _port1 && !isIn) return _statsP1Out;
-            if (device == _port2 && isIn) return _statsP2In;
+            if (_port1 != null && device == _port1 && isIn) return _statsP1In;
+            if (_port1 != null && device == _port1 && !isIn) return _statsP1Out;
+            if (_port2 != null && device == _port2 && isIn) return _statsP2In;
             return _statsP2Out;
         }
 
         private void LearnMac(Packet packet, LibPcapLiveDevice port)
         {
             UpdateStats(packet, port, true);
-            
+
             var eth = packet.Extract<EthernetPacket>();
             if (eth == null) return;
-            
+
             var srcMac = eth.SourceHardwareAddress.ToString();
+            var srcMacFormatted = string.Join(":", srcMac.Chunk(2).Select(c => new string(c)));
             var portNumber = GetPortNumberFromPort(port);
 
             lock (_macTableLock)
             {
-                if (_macTable.TryGetValue(srcMac, out var entry)){
+                if (_macTable.TryGetValue(srcMac, out var entry))
+                {
                     entry.AgingTime = _agingTime;
-                    entry.PortNumber = portNumber; // toto riesi vymenu kablov
-                
+                    entry.PortNumber = portNumber;
                 }
                 else
                 {
                     _macTable[srcMac] = new MacEntry
                     {
-                        MacAddress = srcMac,
+                        MacAddress = srcMacFormatted,
                         PortNumber = portNumber,
                         AgingTime = _agingTime
                     };
@@ -226,10 +340,11 @@ namespace psip
         private void ForwardMac(Packet packet, ReadOnlySpan<byte> data, LibPcapLiveDevice srcPort)
         {
             var eth = packet.Extract<EthernetPacket>();
+            if (eth == null) return;
 
-            var destMac = eth.DestinationHardwareAddress.ToString();
+            var destMac = eth.DestinationHardwareAddress.ToString().ToUpper();
 
-            if (destMac == "ff:ff:ff:ff:ff:ff")
+            if (destMac == "FFFFFFFFFFFF")
             {
                 SendUnknownUnicast(packet, data, srcPort);
                 return;
@@ -239,7 +354,12 @@ namespace psip
             {
                 if (_macTable.TryGetValue(destMac, out var entry))
                 {
-                    SendUnicast(packet, data, GetPortFromPortNumber(entry.PortNumber));
+                    if (entry.PortNumber != GetPortNumberFromPort(srcPort))
+                    {
+                        var destPort = GetPortFromPortNumber(entry.PortNumber);
+                        if (destPort != null)
+                            SendUnicast(packet, data, destPort);
+                    }
                 }
                 else
                 {
@@ -250,125 +370,170 @@ namespace psip
 
         private void SendUnknownUnicast(Packet packet, ReadOnlySpan<byte> data, LibPcapLiveDevice excludedPort)
         {
-            foreach (var port in _ports)
+            foreach (var port in _ports.ToList())
             {
-                if (port != excludedPort && _antiLoop.CheckOutgoing(data, port))
+                if (port == excludedPort) continue;
+
+                try
                 {
                     port.SendPacket(data);
                     UpdateStats(packet, port, false);
+                }
+                catch (Exception ex)
+                {
+                    // Console.WriteLine($"SendUnknownUnicast failed on {port.Name}: {ex.Message}");
                 }
             }
         }
 
         private void SendUnicast(Packet packet, ReadOnlySpan<byte> data, LibPcapLiveDevice destPort)
         {
-            if (_antiLoop.CheckOutgoing(data, destPort))
+            try
             {
                 destPort.SendPacket(data);
                 UpdateStats(packet, destPort, false);
             }
+            catch (Exception ex)
+            {
+                // Console.WriteLine($"SendUnicast failed on {destPort.Name}: {ex.Message}");
+            }
         }
 
-        private void ClearMacEntries(LibPcapLiveDevice port)
-        {   
-            var portNumber = GetPortNumberFromPort(port);
+        private static string? ExtractGuidFromDeviceName(string deviceName)
+        {
+            var match = Regex.Match(deviceName, @"\{([A-Fa-f0-9\-]+)\}");
+            return match.Success ? match.Groups[1].Value : null;
+        }
+
+        private static string NormalizeGuid(string guid)
+        {
+            return guid.Trim('{', '}').ToUpperInvariant();
+        }
+
+        private static NetworkInterface? FindNetworkInterface(LibPcapLiveDevice port)
+        {
+            var guid = ExtractGuidFromDeviceName(port.Name);
+            if (guid == null) return null;
+
+            var normalizedGuid = NormalizeGuid(guid);
+
+            return NetworkInterface.GetAllNetworkInterfaces()
+                .FirstOrDefault(n => NormalizeGuid(n.Id) == normalizedGuid);
+        }
+
+        private void ClearWholeMacTable()
+        {
+            lock (_macTableLock)
+            {
+                _macTable.Clear();
+            }
+        }
+
+        private void ClearMacEntriesByPortNumber(int portNumber)
+        {
             List<string> toRemove = [];
+
             lock (_macTableLock)
             {
                 foreach (var entry in _macTable)
                 {
-                    if (entry.Value.PortNumber == portNumber) toRemove.Add(entry.Key);
+                    if (entry.Value.PortNumber == portNumber)
+                        toRemove.Add(entry.Key);
                 }
-                
-                foreach (var key in toRemove)  _macTable.Remove(key);
-            }
-            
-            _antiLoop.FlushPort(port);
-        }
 
-        private void SetAgingTime(int agingTime)
-        {
-            _agingTime = agingTime;
+                foreach (var key in toRemove)
+                {
+                    _macTable.Remove(key);
+                }
+            }
         }
 
         private int GetPortNumberFromPort(LibPcapLiveDevice port)
         {
-            return port == _port1 ? 1 : 2;
+            if (_port1 != null && port == _port1) return 1;
+            return 2;
         }
 
-        private LibPcapLiveDevice GetPortFromPortNumber(int portNumber)
+        private LibPcapLiveDevice? GetPortFromPortNumber(int portNumber)
         {
             return portNumber == 1 ? _port1 : _port2;
         }
 
         private void OnPacketReceived(object sender, PacketCapture e)
         {
-            if (sender is not LibPcapLiveDevice port)
-                return;
+            if (_restartInProgress) return;
+            if (sender is not LibPcapLiveDevice port) return;
 
-            var raw = e.GetPacket();
-            var data = raw.Data;
+            try
+            {
+                var raw = e.GetPacket();
+                var data = raw.Data;
 
-            if (!_antiLoop.CheckIncoming(data, port)) return;
-            
-            var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
-            
-            LearnMac(packet, port);
-            
-            ForwardMac(packet, data, port);
+                if (!_antiLoop.Check(data))
+                    return;
+
+                var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
+
+                LearnMac(packet, port);
+                ForwardMac(packet, data, port);
+            }
+            catch (Exception ex)
+            {
+                // Console.WriteLine($"OnPacketReceived failed: {ex.Message}");
+            }
         }
-        
+
         private void OnAgingTick(object? sender, ElapsedEventArgs e)
         {
-            CheckLinkState(_port1, ref _port1WasUp);
-            CheckLinkState(_port2, ref _port2WasUp);
-            
+            foreach (var port in _ports.ToList())
+            {
+                CheckLinkState(port);
+            }
+
             lock (_macTableLock)
             {
                 List<string> toRemove = [];
-            
+
                 foreach (var entry in _macTable)
                 {
                     entry.Value.AgingTime--;
-            
+
                     if (entry.Value.AgingTime <= 0)
-                    {
                         toRemove.Add(entry.Key);
-                    }
                 }
-            
-                foreach (var entry in toRemove)
+
+                foreach (var key in toRemove)
                 {
-                    _macTable.Remove(entry);
+                    _macTable.Remove(key);
                 }
             }
-            
         }
-        
+
         private void OnGuiRefreshTick(object? sender, ElapsedEventArgs e)
         {
             List<MacEntry> snapshot;
             lock (_macTableLock)
             {
-                snapshot = _macTable.Values.ToList();
+                snapshot = _macTable.Values
+                    .Select(x => new MacEntry
+                    {
+                        MacAddress = x.MacAddress,
+                        PortNumber = x.PortNumber,
+                        AgingTime = x.AgingTime
+                    })
+                    .ToList();
             }
 
             Dispatcher.BeginInvoke(() =>
             {
-                for (var i = _macTableItems.Count - 1; i >= 0; i--)
-                {
-                    if (snapshot.All(x => x.MacAddress != _macTableItems[i].MacAddress))
-                        _macTableItems.RemoveAt(i);
-                }
-                
-                var existing = _macTableItems.Select(x => x.MacAddress).ToHashSet();
-                foreach (var entry in snapshot.Where(entry => !existing.Contains(entry.MacAddress)))
+                _macTableItems.Clear();
+                foreach (var entry in snapshot)
                 {
                     _macTableItems.Add(entry);
                 }
             });
         }
-        
+
         private void UpdateStats(Packet packet, LibPcapLiveDevice port, bool isIn)
         {
             lock (_statsLock)
@@ -399,7 +564,7 @@ namespace psip
                         stats["HTTP"]++;
                     }
                 }
-                
+
                 var udp = packet.Extract<UdpPacket>();
                 if (udp != null) stats["UDP"]++;
             }
@@ -409,7 +574,8 @@ namespace psip
                 lock (_statsLock)
                 {
                     var portNumber = GetPortNumberFromPort(port);
-                    var isPort1 = 1 == portNumber;
+                    var isPort1 = portNumber == 1;
+
                     if (isPort1 && isIn)
                     {
                         P1InTotal.Text = _statsP1In["TOTAL"].ToString();
@@ -460,7 +626,7 @@ namespace psip
 
         private void ResetStatsClick(object sender, RoutedEventArgs e)
         {
-            var statNames = new [] {"TOTAL", "Ethernet2", "ARP", "IP", "ICMP", "TCP", "UDP", "HTTP"};
+            var statNames = new[] { "TOTAL", "Ethernet2", "ARP", "IP", "ICMP", "TCP", "UDP", "HTTP" };
 
             lock (_statsLock)
             {
@@ -472,7 +638,7 @@ namespace psip
                     }
                 }
             }
-            
+
             P1InTotal.Text = "0";
             P1InEth.Text = "0";
             P1InArp.Text = "0";

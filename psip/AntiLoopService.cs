@@ -1,69 +1,55 @@
-﻿using System.Security.Cryptography;
-using SharpPcap.LibPcap;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
 
 namespace psip
 {
     public class AntiLoopService
     {
-        private readonly HashSet<string> _recentSent = new();
-        private readonly Queue<string> _recentOrder = new();
-        private readonly Lock _recentLock = new();
-        private const int MaxRecent = 1000;
+        private readonly Dictionary<string, long> _seen = new();
+        private readonly Lock _lock = new();
+        private const int ExpiryMs = 2000;
 
-        public bool CheckIncoming(ReadOnlySpan<byte> packetData, LibPcapLiveDevice sourcePort)
+        public bool Check(ReadOnlySpan<byte> packetData)
         {
-            var key = MakeKey(packetData, sourcePort.Name);
-            
-            lock (_recentLock)
+            var hash = MakeHash(packetData);
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            lock (_lock)
             {
-                if (_recentSent.Remove(key))
-                {
+                Cleanup(now);
+
+                if (_seen.ContainsKey(hash))
                     return false;
-                }
+
+                _seen[hash] = now;
+                return true;
             }
-            
-            return true;
         }
 
-        public bool CheckOutgoing(ReadOnlySpan<byte> packetData, LibPcapLiveDevice targetPort)
+        public void Clear()
         {
-            var key = MakeKey(packetData, targetPort.Name);
-            
-            lock (_recentLock)
+            lock (_lock)
             {
-                if (_recentSent.Contains(key))
-                {
-                    return false;  // drop duplicate
-                }
-                
-                _recentSent.Add(key);
-                _recentOrder.Enqueue(key);
-                
-                while (_recentOrder.Count > MaxRecent)
-                {
-                    var oldKey = _recentOrder.Dequeue();
-                    _recentSent.Remove(oldKey);
-                }
-                
-                return true;  // forward
+                _seen.Clear();
             }
         }
-        
-        private static string MakeKey(ReadOnlySpan<byte> data, string portName)
+
+        private void Cleanup(long now)
         {
-            // var header = data.Slice(0, Math.Min(100, data.Length));
-            var hash = SHA256.HashData(data); // change to 100byte header in case of performance issues
-            return $"{portName}:{Convert.ToHexString(hash)}";
+            var expired = _seen
+                .Where(e => now - e.Value > ExpiryMs)
+                .Select(e => e.Key)
+                .ToList();
+
+            foreach (var key in expired)
+                _seen.Remove(key);
         }
-        
-        public void FlushPort(LibPcapLiveDevice port)
+
+        private static string MakeHash(ReadOnlySpan<byte> data)
         {
-            var prefix = port.Name + ":";
-    
-            lock (_recentLock)
-            {
-                _recentSent.RemoveWhere(key => key.StartsWith(prefix));
-            }
+            return Convert.ToHexString(SHA256.HashData(data));
         }
     }
 }

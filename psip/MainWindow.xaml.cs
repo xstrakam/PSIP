@@ -183,25 +183,15 @@ namespace psip
             if (_restartInProgress) return;
             if (string.IsNullOrWhiteSpace(_port1Name) || string.IsNullOrWhiteSpace(_port2Name)) return;
 
-            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            if (now - _lastRestartMs < 1500) return;
-
             _restartInProgress = true;
 
             try
             {
-                // Console.WriteLine("Restarting all captures...");
-
                 StopPortSafely(_port1);
                 StopPortSafely(_port2);
 
-                Thread.Sleep(1200);
-
-                var newPort1 = OpenPortByName(_port1Name);
-                var newPort2 = OpenPortByName(_port2Name);
-
-                _port1 = newPort1;
-                _port2 = newPort2;
+                _port1 = OpenPortByName(_port1Name);
+                _port2 = OpenPortByName(_port2Name);
                 _ports = [_port1, _port2];
 
                 _linkStates.Clear();
@@ -210,15 +200,7 @@ namespace psip
                 _linkStates[_port1] = PortLinkState.Up;
                 _linkStates[_port2] = PortLinkState.Up;
 
-                // ClearWholeMacTable();
                 _antiLoop.Clear();
-
-                _lastRestartMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-                // Console.WriteLine("All captures restarted");
-            }
-            catch (Exception ex)
-            {
-                // Console.WriteLine($"RestartAllCaptures failed: {ex.Message}");
             }
             finally
             {

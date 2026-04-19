@@ -38,10 +38,7 @@ namespace psip
 
         private void Cleanup(long now)
         {
-            var expired = _seen
-                .Where(e => now - e.Value > ExpiryMs)
-                .Select(e => e.Key)
-                .ToList();
+            var expired = _seen.Where(e => now - e.Value > ExpiryMs).Select(e => e.Key).ToList();
 
             foreach (var key in expired)
                 _seen.Remove(key);

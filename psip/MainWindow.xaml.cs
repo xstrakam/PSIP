@@ -51,7 +51,6 @@ namespace psip
         private readonly Dictionary<LibPcapLiveDevice, long> _disconnectTimes = new();
 
         private volatile bool _restartInProgress = false;
-        private long _lastRestartMs = 0;
 
         public MainWindow()
         {
@@ -170,9 +169,7 @@ namespace psip
         {
             var freshList = CaptureDeviceList.New();
 
-            var port = freshList
-                .OfType<LibPcapLiveDevice>()
-                .First(d => d.Name == deviceName);
+            var port = freshList.OfType<LibPcapLiveDevice>().First(d => d.Name == deviceName);
 
             OpenPort(port);
             return port;
@@ -405,8 +402,7 @@ namespace psip
 
             var normalizedGuid = NormalizeGuid(guid);
 
-            return NetworkInterface.GetAllNetworkInterfaces()
-                .FirstOrDefault(n => NormalizeGuid(n.Id) == normalizedGuid);
+            return NetworkInterface.GetAllNetworkInterfaces().FirstOrDefault(n => NormalizeGuid(n.Id) == normalizedGuid);
         }
 
         private void ClearWholeMacTable()

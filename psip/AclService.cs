@@ -15,6 +15,7 @@ public class AclService
         var dstIp = ExtractDstIp(packet);
         var srcPort = ExtractSrcPort(packet);
         var dstPort = ExtractDstPort(packet);
+        var icmpType = ExtractIcmpType(packet);
         
         lock (_rulesLock)
         {
@@ -29,7 +30,7 @@ public class AclService
                 if (!MatchesDstIp(rule, dstIp)) continue;
                 if (!MatchesSrcPort(rule, srcPort)) continue;
                 if (!MatchesDstPort(rule, dstPort)) continue;
-                if (!MatchesIcmpType(rule, "any")) continue;
+                if (!MatchesIcmpType(rule, icmpType)) continue;
                 
                 return rule.Action != AclAction.Deny;
             }
@@ -77,13 +78,40 @@ public class AclService
     private static bool MatchesSrcIp(AclRule rule, string srcIp)
     {   
         if (rule.SrcIp == "any") return true;
-        return false;
+        return MatchesIp(rule.SrcIp, srcIp);
     }
     
     private static bool MatchesDstIp(AclRule rule, string dstIp)
     {
         if (rule.DstIp == "any") return true;
-        return false;
+        return MatchesIp(rule.DstIp, dstIp);
+    }
+    
+    private static bool MatchesIp(string aclIp, string ip)
+    {
+        if (string.IsNullOrEmpty(ip)) return false;
+
+        var parts = aclIp.Split('/');
+
+        if (!int.TryParse(parts[1], out var prefixLen)) return false;
+
+        var addrBytes = System.Net.IPAddress.Parse(ip).GetAddressBytes();
+        var netBytes  = System.Net.IPAddress.Parse(parts[0]).GetAddressBytes();
+        
+        var fullBytes  = prefixLen / 8;
+        var remainBits = prefixLen % 8;
+
+        for (var i = 0; i < fullBytes; i++)
+            if (addrBytes[i] != netBytes[i]) return false;
+        
+        if (remainBits > 0)
+        {
+            var mask = 0xFF << (8 - remainBits) & 0xFF;
+            if ((addrBytes[fullBytes] & mask) != (netBytes[fullBytes] & mask))
+                return false;
+        }
+
+        return true;
     }
 
     private static bool MatchesSrcPort(AclRule rule, int srcPort)
@@ -98,10 +126,10 @@ public class AclService
         return rule.DstPort == dstPort.ToString();
     }
 
-    private static bool MatchesIcmpType(AclRule rule, string icmpType)
+    private static bool MatchesIcmpType(AclRule rule, AclIcmpType icmpType)
     {
         if (rule.IcmpType == AclIcmpType.Any) return true;
-        return rule.IcmpType == AclIcmpType.Echo && icmpType == "Echo" || rule.IcmpType == AclIcmpType.EchoReply && icmpType == "EchoReply";
+        return rule.IcmpType == icmpType;
     }
 
     private static string ExtractSrcMac(Packet p)
@@ -132,5 +160,17 @@ public class AclService
     private static int ExtractDstPort(Packet p)
     {
         return p.Extract<TcpPacket>()?.DestinationPort ?? p.Extract<UdpPacket>()?.DestinationPort ?? 0;
+    }
+    
+    private static AclIcmpType ExtractIcmpType(Packet p)
+    {
+        var icmp = p.Extract<IcmpV4Packet>();
+        if (icmp == null) return AclIcmpType.Any;
+        return icmp.TypeCode switch
+        {
+            IcmpV4TypeCode.EchoRequest => AclIcmpType.Echo,
+            IcmpV4TypeCode.EchoReply => AclIcmpType.EchoReply,
+            _ => AclIcmpType.Any
+        };
     }
 }

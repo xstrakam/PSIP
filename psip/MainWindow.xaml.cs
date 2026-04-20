@@ -298,6 +298,8 @@ namespace psip
 
         private void LearnMac(Packet packet, LibPcapLiveDevice port)
         {
+            if(!_aclService.CheckPacket(packet, GetPortNumberFromPort(port), true)) return;
+            
             UpdateStats(packet, port, true);
 
             var eth = packet.Extract<EthernetPacket>();
@@ -365,6 +367,8 @@ namespace psip
 
                 try
                 {
+                    if(!_aclService.CheckPacket(packet, GetPortNumberFromPort(port), false)) continue;
+                    
                     port.SendPacket(data);
                     UpdateStats(packet, port, false);
                 }
@@ -378,7 +382,9 @@ namespace psip
         private void SendUnicast(Packet packet, ReadOnlySpan<byte> data, LibPcapLiveDevice destPort)
         {
             try
-            {
+            {   
+                if(!_aclService.CheckPacket(packet, GetPortNumberFromPort(destPort), false)) return;
+                
                 destPort.SendPacket(data);
                 UpdateStats(packet, destPort, false);
             }
@@ -666,27 +672,56 @@ namespace psip
 
         private void AddAclRuleClick(object sender, RoutedEventArgs e)
         {
+            var priority = int.TryParse(AclPriorityBox.Text, out var p) ? p : 0;
+            
+            var direction = (AclDirectionBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
+            {
+                "IN" => AclDirection.In, "OUT" => AclDirection.Out, _ => AclDirection.Any
+            };
+            
+            var port = (AclPortBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
+            {
+                "1" => "1", "2" => "2", _ => "any"
+            };
+            
+            var protocol = (AclProtoBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
+            {
+                "ip" => AclProtocol.Ip, "icmp" => AclProtocol.Icmp,
+                "tcp" => AclProtocol.Tcp, "udp" => AclProtocol.Udp, _ => AclProtocol.Any
+            };
+            
+            var srcMac = string.IsNullOrWhiteSpace(AclSrcMacBox.Text) ? "any" : AclSrcMacBox.Text;
+            var dstMac = string.IsNullOrWhiteSpace(AclDstMacBox.Text) ? "any" : AclDstMacBox.Text;
+            var srcIp = string.IsNullOrWhiteSpace(AclSrcIpBox.Text) ? "any" : AclSrcIpBox.Text;
+            var dstIp = string.IsNullOrWhiteSpace(AclDstIpBox.Text) ? "any" : AclDstIpBox.Text;
+            var srcPort = string.IsNullOrWhiteSpace(AclSrcPortBox.Text) ? "any" : AclSrcPortBox.Text;
+            var dstPort = string.IsNullOrWhiteSpace(AclDstPortBox.Text) ? "any" : AclDstPortBox.Text;
+            
+            var icmpType = (AclIcmpTypeBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
+            {
+                "echo" => AclIcmpType.Echo, "echo-reply" => AclIcmpType.EchoReply, _ => AclIcmpType.Any
+            };
+            
+            var action = (AclActionBox.SelectedItem as ComboBoxItem)?.Content.ToString() == "PERMIT"
+                ? AclAction.Permit
+                : AclAction.Deny;
+            
             var rule = new AclRule
             {
-                Priority = int.TryParse(AclPriorityBox.Text, out var p) ? p : 0,
-                Direction = (AclDirectionBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
-                    { "IN" => AclDirection.In, "OUT" => AclDirection.Out, _ => AclDirection.Any },
-                Port = (AclPortBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
-                    { "1" => "1", "2" => "2", _ => "any" },
-                Protocol = (AclProtoBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
-                { "ip" => AclProtocol.Ip, "icmp" => AclProtocol.Icmp,
-                    "tcp" => AclProtocol.Tcp, "udp" => AclProtocol.Udp, _ => AclProtocol.Any },
-                SrcMac = string.IsNullOrWhiteSpace(AclSrcMacBox.Text) ? "any" : AclSrcMacBox.Text,
-                DstMac = string.IsNullOrWhiteSpace(AclDstMacBox.Text) ? "any" : AclDstMacBox.Text,
-                SrcIp = string.IsNullOrWhiteSpace(AclSrcIpBox.Text) ? "any" : AclSrcIpBox.Text,
-                DstIp = string.IsNullOrWhiteSpace(AclDstIpBox.Text) ? "any" : AclDstIpBox.Text,
-                SrcPort = string.IsNullOrWhiteSpace(AclSrcPortBox.Text) ? "any" : AclSrcPortBox.Text,
-                DstPort = string.IsNullOrWhiteSpace(AclDstPortBox.Text) ? "any" : AclDstPortBox.Text,
-                IcmpType = (AclIcmpTypeBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
-                    { "echo" => AclIcmpType.Echo, "echo-reply" => AclIcmpType.EchoReply, _ => AclIcmpType.Any },
-                Action = (AclActionBox.SelectedItem as ComboBoxItem)?.Content.ToString() == "PERMIT"
-                    ? AclAction.Permit : AclAction.Deny
+                Priority = priority,
+                Direction = direction,
+                Port = port,
+                Protocol = protocol,
+                SrcMac = srcMac,
+                DstMac = dstMac,
+                SrcIp = srcIp,
+                DstIp = dstIp,
+                SrcPort = srcPort,
+                DstPort = dstPort,
+                IcmpType = icmpType,
+                Action = action
             };
+            
             _aclService.AddRule(rule);
             RefreshAclGrid();
         }

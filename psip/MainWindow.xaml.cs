@@ -298,8 +298,6 @@ namespace psip
 
         private void LearnMac(Packet packet, LibPcapLiveDevice port)
         {
-            if(!_aclService.CheckPacket(packet, GetPortNumberFromPort(port), true)) return;
-            
             UpdateStats(packet, port, true);
 
             var eth = packet.Extract<EthernetPacket>();
@@ -467,7 +465,9 @@ namespace psip
                     return;
 
                 var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
-
+                
+                if(!_aclService.CheckPacket(packet, GetPortNumberFromPort(port), true)) return;
+                
                 LearnMac(packet, port);
                 ForwardMac(packet, data, port);
             }

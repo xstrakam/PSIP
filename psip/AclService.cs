@@ -6,7 +6,28 @@ public class AclService
 {
     private readonly List<AclRule> _rules = [];
     private readonly Lock _rulesLock = new();
+    
+    public void AddRule(AclRule rule)
+    {
+        lock (_rulesLock)
+        {
+            if (rule.Priority == 0)
+                rule.Priority = _rules.Count == 0 ? 10 : _rules.Max(r => r.Priority) + 10;
+            _rules.Add(rule);
+        }
+    }
 
+    public void RemoveRule(AclRule rule)
+    {
+        lock (_rulesLock) _rules.Remove(rule);
+    }
+
+    public IReadOnlyList<AclRule> GetRules()
+    {
+        lock (_rulesLock)
+            return _rules.OrderBy(r => r.Priority).ToList();
+    }
+    
     public bool CheckPacket(Packet packet, int portNumber, bool isIn)
     {
         var srcMac = ExtractSrcMac(packet);
@@ -19,7 +40,7 @@ public class AclService
         
         lock (_rulesLock)
         {
-            foreach (var rule in _rules)
+            foreach (var rule in _rules.OrderBy(r => r.Priority))
             {
                 if (!MatchesDirection(rule, isIn)) continue;
                 if (!MatchesPort(rule, portNumber)) continue;

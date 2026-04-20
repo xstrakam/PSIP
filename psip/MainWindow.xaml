@@ -5,15 +5,12 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:psip"
         mc:Ignorable="d"
-        Title="MainWindow" Height="700" Width="800">
+        Title="MainWindow" Height="720" Width="1440">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="20,20,20,10">
@@ -25,112 +22,244 @@
         
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="20,0,20,10">
             <Button Name="StartCaptureButton" Content="Start capture" Click="StartCaptureClick" Padding="8" Margin="0,0,5,0"/>
-            <Button Name="StopCaptureButton" Content="Stop capture" Click="StopCaptureClick" Padding="8" Margin="0,0,5,0"/>
-            <Button Name="ResetStatsButton" Content="Reset stats" Click="ResetStatsClick" Padding="8" Margin="0,0,5,0"/>
+            <Button Name="StopCaptureButton"  Content="Stop capture"  Click="StopCaptureClick"  Padding="8" Margin="0,0,5,0"/>
+            <Button Name="ResetStatsButton"   Content="Reset stats"   Click="ResetStatsClick"   Padding="8" Margin="0,0,5,0"/>
         </StackPanel>
         
-        <Grid Grid.Row="2" Margin="20">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="80"/>
-                <ColumnDefinition Width="100"/>
-                <ColumnDefinition Width="100"/>
-                <ColumnDefinition Width="100"/>
-                <ColumnDefinition Width="100"/>
+                <ColumnDefinition Width="480"/>
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
             
-            <TextBlock Grid.Row="0" Grid.Column="0" Text=""/>
-            <TextBlock Grid.Row="0" Grid.Column="1" Text="Port 1 IN" FontWeight="Bold" TextAlignment="Center"/>
-            <TextBlock Grid.Row="0" Grid.Column="2" Text="Port 1 OUT" FontWeight="Bold" TextAlignment="Center"/>
-            <TextBlock Grid.Row="0" Grid.Column="3" Text="Port 2 IN" FontWeight="Bold" TextAlignment="Center"/>
-            <TextBlock Grid.Row="0" Grid.Column="4" Text="Port 2 OUT" FontWeight="Bold" TextAlignment="Center"/>
+            <StackPanel Grid.Column="0" Margin="20,10,10,10">
+                
+                <TextBlock Text="Stats" FontWeight="Bold" FontSize="14" Margin="0,0,0,8"/>
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="80"/>
+                        <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="90"/>
+                        <ColumnDefinition Width="90"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text=""/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="Port 1 IN"  FontWeight="Bold" TextAlignment="Center"/>
+                    <TextBlock Grid.Row="0" Grid.Column="2" Text="Port 1 OUT" FontWeight="Bold" TextAlignment="Center"/>
+                    <TextBlock Grid.Row="0" Grid.Column="3" Text="Port 2 IN"  FontWeight="Bold" TextAlignment="Center"/>
+                    <TextBlock Grid.Row="0" Grid.Column="4" Text="Port 2 OUT" FontWeight="Bold" TextAlignment="Center"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Total"     Margin="0,2"/>
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Ethernet2" Margin="0,2"/>
+                    <TextBlock Grid.Row="3" Grid.Column="0" Text="ARP"       Margin="0,2"/>
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="IP"        Margin="0,2"/>
+                    <TextBlock Grid.Row="5" Grid.Column="0" Text="ICMP"      Margin="0,2"/>
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="TCP"       Margin="0,2"/>
+                    <TextBlock Grid.Row="7" Grid.Column="0" Text="UDP"       Margin="0,2"/>
+                    <TextBlock Grid.Row="8" Grid.Column="0" Text="HTTP"      Margin="0,2"/>
+
+                    <TextBlock x:Name="P1InTotal"  Grid.Row="1" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1InEth"    Grid.Row="2" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1InArp"    Grid.Row="3" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1InIp"     Grid.Row="4" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1InIcmp"   Grid.Row="5" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1InTcp"    Grid.Row="6" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1InUdp"    Grid.Row="7" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1InHttp"   Grid.Row="8" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+
+                    <TextBlock x:Name="P1OutTotal" Grid.Row="1" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1OutEth"   Grid.Row="2" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1OutArp"   Grid.Row="3" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1OutIp"    Grid.Row="4" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1OutIcmp"  Grid.Row="5" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1OutTcp"   Grid.Row="6" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1OutUdp"   Grid.Row="7" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P1OutHttp"  Grid.Row="8" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+
+                    <TextBlock x:Name="P2InTotal"  Grid.Row="1" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2InEth"    Grid.Row="2" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2InArp"    Grid.Row="3" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2InIp"     Grid.Row="4" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2InIcmp"   Grid.Row="5" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2InTcp"    Grid.Row="6" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2InUdp"    Grid.Row="7" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2InHttp"   Grid.Row="8" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+
+                    <TextBlock x:Name="P2OutTotal" Grid.Row="1" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2OutEth"   Grid.Row="2" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2OutArp"   Grid.Row="3" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2OutIp"    Grid.Row="4" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2OutIcmp"  Grid.Row="5" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2OutTcp"   Grid.Row="6" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2OutUdp"   Grid.Row="7" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <TextBlock x:Name="P2OutHttp"  Grid.Row="8" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+                </Grid>
+                
+                <TextBlock Text="MAC Table" FontWeight="Bold" FontSize="14" Margin="0,20,0,8"/>
+                <DataGrid Name="MacTableDataGrid"
+                          Height="180"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          GridLinesVisibility="All"
+                          VerticalScrollBarVisibility="Auto">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="MAC Address" Binding="{Binding MacAddress}" Width="*"/>
+                        <DataGridTextColumn Header="Port"        Binding="{Binding PortNumber}"  Width="60"/>
+                        <DataGridTextColumn Header="Aging"       Binding="{Binding AgingTime}"   Width="60"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <Button Name="ClearMacTableButton" Content="Clear MAC" Click="ClearMacTableClick" Padding="8" Margin="0,0,10,0"/>
+                    <Label Content="Aging:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <TextBox Name="AgingTimeTextBox" Width="60" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                    <TextBlock Text="s" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <Button Name="SetAgingTimeButton" Content="Set aging time" Click="SetAgingTimeClick" Padding="8"/>
+                </StackPanel>
+            </StackPanel>
             
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="Total" Margin="0,2"/>
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="Ethernet2" Margin="0,2"/>
-            <TextBlock Grid.Row="3" Grid.Column="0" Text="ARP" Margin="0,2"/>
-            <TextBlock Grid.Row="4" Grid.Column="0" Text="IP" Margin="0,2"/>
-            <TextBlock Grid.Row="5" Grid.Column="0" Text="ICMP" Margin="0,2"/>
-            <TextBlock Grid.Row="6" Grid.Column="0" Text="TCP" Margin="0,2"/>
-            <TextBlock Grid.Row="7" Grid.Column="0" Text="UDP" Margin="0,2"/>
-            <TextBlock Grid.Row="8" Grid.Column="0" Text="HTTP" Margin="0,2"/>
+            <StackPanel Grid.Column="1" Margin="10,10,20,10">
+                
+                <TextBlock Text="ACL rules" FontWeight="Bold" FontSize="14" Margin="0,0,0,5"/>
+                <DataGrid x:Name="AclRulesGrid"
+                          AutoGenerateColumns="False"
+                          IsReadOnly="True"
+                          Height="180"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Auto"
+                          GridLinesVisibility="All"
+                          Margin="0,0,0,12">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Pri."   Binding="{Binding Priority}"  Width="50"/>
+                        <DataGridTextColumn Header="Dir."     Binding="{Binding Direction}" Width="50"/>
+                        <DataGridTextColumn Header="Port"     Binding="{Binding Port}"      Width="40"/>
+                        <DataGridTextColumn Header="Proto."   Binding="{Binding Protocol}"  Width="55"/>
+                        <DataGridTextColumn Header="srcMAC"   Binding="{Binding SrcMac}"    Width="120"/>
+                        <DataGridTextColumn Header="dstMAC"   Binding="{Binding DstMac}"    Width="120"/>
+                        <DataGridTextColumn Header="srcIP"    Binding="{Binding SrcIp}"     Width="115"/>
+                        <DataGridTextColumn Header="dstIP"    Binding="{Binding DstIp}"     Width="115"/>
+                        <DataGridTextColumn Header="srcPort"    Binding="{Binding SrcPort}"   Width="50"/>
+                        <DataGridTextColumn Header="dstPort"    Binding="{Binding DstPort}"   Width="50"/>
+                        <DataGridTextColumn Header="ICMP type"     Binding="{Binding IcmpType}"  Width="65"/>
+                        <DataGridTextColumn Header="Action"    Binding="{Binding Action}"    Width="55"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+                
+                <TextBlock Text="Add rule" FontWeight="Bold" FontSize="13" Margin="0,0,0,8"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="0,3">
+                        <TextBlock Text="Priority:" Width="110" VerticalAlignment="Center"/>
+                        <TextBox x:Name="AclPriorityBox" Width="110"/>
+                    </StackPanel>
 
-            <TextBlock x:Name="P1InTotal" Grid.Row="1" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1InEth" Grid.Row="2" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1InArp" Grid.Row="3" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1InIp" Grid.Row="4" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1InIcmp" Grid.Row="5" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1InTcp" Grid.Row="6" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1InUdp" Grid.Row="7" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1InHttp" Grid.Row="8" Grid.Column="1" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="0,3">
+                        <TextBlock Text="Direction:" Width="110" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="AclDirectionBox" Width="110">
+                            <ComboBoxItem Content="any" IsSelected="True"/>
+                            <ComboBoxItem Content="IN"/>
+                            <ComboBoxItem Content="OUT"/>
+                        </ComboBox>
+                    </StackPanel>
 
-            <TextBlock x:Name="P1OutTotal" Grid.Row="1" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1OutEth" Grid.Row="2" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1OutArp" Grid.Row="3" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1OutIp" Grid.Row="4" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1OutIcmp" Grid.Row="5" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1OutTcp" Grid.Row="6" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1OutUdp" Grid.Row="7" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P1OutHttp" Grid.Row="8" Grid.Column="2" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="0,3">
+                        <TextBlock Text="Port (interface):" Width="110" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="AclPortBox" Width="110">
+                            <ComboBoxItem Content="any" IsSelected="True"/>
+                            <ComboBoxItem Content="1"/>
+                            <ComboBoxItem Content="2"/>
+                        </ComboBox>
+                    </StackPanel>
 
-            <TextBlock x:Name="P2InTotal" Grid.Row="1" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2InEth" Grid.Row="2" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2InArp" Grid.Row="3" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2InIp" Grid.Row="4" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2InIcmp" Grid.Row="5" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2InTcp" Grid.Row="6" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2InUdp" Grid.Row="7" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2InHttp" Grid.Row="8" Grid.Column="3" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" Margin="0,3">
+                        <TextBlock Text="Protocol:" Width="110" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="AclProtoBox" Width="110">
+                            <ComboBoxItem Content="any" IsSelected="True"/>
+                            <ComboBoxItem Content="ip"/>
+                            <ComboBoxItem Content="icmp"/>
+                            <ComboBoxItem Content="tcp"/>
+                            <ComboBoxItem Content="udp"/>
+                        </ComboBox>
+                    </StackPanel>
 
-            <TextBlock x:Name="P2OutTotal" Grid.Row="1" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2OutEth" Grid.Row="2" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2OutArp" Grid.Row="3" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2OutIp" Grid.Row="4" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2OutIcmp" Grid.Row="5" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2OutTcp" Grid.Row="6" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2OutUdp" Grid.Row="7" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
-            <TextBlock x:Name="P2OutHttp" Grid.Row="8" Grid.Column="4" Margin="0,2" TextAlignment="Center" Text="0"/>
+                    <StackPanel Grid.Row="4" Grid.Column="0" Orientation="Horizontal" Margin="0,3">
+                        <TextBlock Text="ICMP type:" Width="110" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="AclIcmpTypeBox" Width="110">
+                            <ComboBoxItem Content="any" IsSelected="True"/>
+                            <ComboBoxItem Content="echo"/>
+                            <ComboBoxItem Content="echo-reply"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="5" Grid.Column="0" Orientation="Horizontal" Margin="0,3">
+                        <TextBlock Text="Action:" Width="110" VerticalAlignment="Center"/>
+                        <ComboBox x:Name="AclActionBox" Width="110">
+                            <ComboBoxItem Content="PERMIT" IsSelected="True"/>
+                            <ComboBoxItem Content="DENY"/>
+                        </ComboBox>
+                    </StackPanel>
+                    
+                    <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="0,3">
+                        <TextBlock Text="src MAC:" Width="110" VerticalAlignment="Center"/>
+                        <TextBox x:Name="AclSrcMacBox" Width="160"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,3">
+                        <TextBlock Text="dst MAC:" Width="110" VerticalAlignment="Center"/>
+                        <TextBox x:Name="AclDstMacBox" Width="160"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2" Grid.Column="1" Orientation="Horizontal" Margin="0,3">
+                        <TextBlock Text="src IP/prefix:" Width="110" VerticalAlignment="Center"/>
+                        <TextBox x:Name="AclSrcIpBox" Width="160"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Margin="0,3">
+                        <TextBlock Text="dst IP/prefix:" Width="110" VerticalAlignment="Center"/>
+                        <TextBox x:Name="AclDstIpBox" Width="160"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,3">
+                        <TextBlock Text="src port:" Width="110" VerticalAlignment="Center"/>
+                        <TextBox x:Name="AclSrcPortBox" Width="160"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="5" Grid.Column="1" Orientation="Horizontal" Margin="0,3">
+                        <TextBlock Text="dst port:" Width="110" VerticalAlignment="Center"/>
+                        <TextBox x:Name="AclDstPortBox" Width="160"/>
+                    </StackPanel>
+                    
+                    <StackPanel Grid.Column="0" Grid.Row="6" Grid.ColumnSpan="2" Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button Content="Pridať pravidlo"    Click="AddAclRuleClick"    Padding="10,5" Margin="0,0,10,0"/>
+                        <Button Content="Odstrániť pravidlo" Click="RemoveAclRuleClick" Padding="10,5"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
         </Grid>
-        
-        <TextBlock Grid.Row="3" Text="MAC Table" FontWeight="Bold" FontSize="14"
-                   HorizontalAlignment="Center" Margin="0,20,0,10"/>
-
-        <DataGrid Grid.Row="4" Margin="20,0,20,20"
-                  Height="150"
-                  Name="MacTableDataGrid"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  GridLinesVisibility="All">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="MAC Address" Binding="{Binding MacAddress}" Width="*"/>
-                <DataGridTextColumn Header="Port" Binding="{Binding PortNumber}" Width="80"/>
-                <DataGridTextColumn Header="Aging" Binding="{Binding AgingTime}" Width="80"/>
-            </DataGrid.Columns>
-        </DataGrid>
-        
-        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="20,0,20,10">
-            <Button Name="ClearMacTableButton"
-                    Content="Clear MAC"
-                    Click="ClearMacTableClick"
-                    Padding="8"
-                    Margin="0,0,10,0"/>
-            <Label Content="Aging:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-            <TextBox Name="AgingTimeTextBox" Width="60" VerticalAlignment="Center" Margin="0,0,5,0"/>
-            <TextBlock Text="s" VerticalAlignment="Center" Margin="0,0,10,0"/>
-            <Button Name="SetAgingTimeButton"
-                    Content="Set aging time"
-                    Click="SetAgingTimeClick"
-                    Padding="8"
-                    Margin="0,0,10,0"/>
-        </StackPanel>
     </Grid>
 </Window>

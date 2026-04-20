@@ -44,14 +44,15 @@ namespace psip
         private readonly Lock _macTableLock = new();
         private readonly ObservableCollection<MacEntry> _macTableItems = new();
 
-        private readonly AntiLoopService _antiLoop = new();
+        private readonly AntiLoopService _antiLoopService = new();
+        private readonly AclService _aclService = new();
 
         private enum PortLinkState { Up, PendingDown, Down }
         private readonly Dictionary<LibPcapLiveDevice, PortLinkState> _linkStates = new();
         private readonly Dictionary<LibPcapLiveDevice, long> _disconnectTimes = new();
 
         private volatile bool _restartInProgress = false;
-
+        
         public MainWindow()
         {
             InitializeComponent();
@@ -145,7 +146,7 @@ namespace psip
             _ports.Clear();
             _linkStates.Clear();
             _disconnectTimes.Clear();
-            _antiLoop.Clear();
+            _antiLoopService.Clear();
         }
 
         private void OpenPort(LibPcapLiveDevice port)
@@ -195,7 +196,7 @@ namespace psip
             _disconnectTimes.Remove(oldPort);
             _linkStates[newPort] = PortLinkState.Up;
 
-            _antiLoop.Clear();
+            _antiLoopService.Clear();
 
             return newPort;
         }
@@ -254,7 +255,7 @@ namespace psip
         private void ClearMacTableClick(object sender, RoutedEventArgs e)
         {
             ClearWholeMacTable();
-            _antiLoop.Clear();
+            _antiLoopService.Clear();
         }
 
         private void SetAgingTimeClick(object sender, RoutedEventArgs e)
@@ -453,7 +454,7 @@ namespace psip
                 var raw = e.GetPacket();
                 var data = raw.Data;
 
-                if (!_antiLoop.Check(data))
+                if (!_antiLoopService.Check(data))
                     return;
 
                 var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
@@ -658,6 +659,16 @@ namespace psip
             P2OutTcp.Text = "0";
             P2OutUdp.Text = "0";
             P2OutHttp.Text = "0";
+        }
+
+        private void AddAclRuleClick(object sender, RoutedEventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void RemoveAclRuleClick(object sender, RoutedEventArgs e)
+        {
+            throw new NotImplementedException();
         }
     }
 }

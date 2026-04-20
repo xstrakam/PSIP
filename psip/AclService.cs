@@ -55,9 +55,9 @@ public class AclService
                 
                 return rule.Action != AclAction.Deny;
             }
+            
+            return _rules.Count == 0; // implicit deny len, ak je aspon 1 acl pravidlo
         }
-        
-        return false;
     }
     
     private static bool MatchesDirection(AclRule rule, bool isIn)

@@ -5,7 +5,7 @@ namespace psip;
 public class AclService
 {
     private readonly List<AclRule> _rules = [];
-    private Lock _rulesLock = new Lock();
+    private readonly Lock _rulesLock = new();
 
     public bool CheckPacket(Packet packet, int portNumber, bool isIn)
     {

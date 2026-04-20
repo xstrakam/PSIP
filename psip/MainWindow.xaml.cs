@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Timers;
 using System.Windows;
+using System.Windows.Controls;
 using PacketDotNet;
 using SharpPcap;
 using SharpPcap.LibPcap;
@@ -43,6 +44,7 @@ namespace psip
         private readonly Dictionary<string, MacEntry> _macTable = new();
         private readonly Lock _macTableLock = new();
         private readonly ObservableCollection<MacEntry> _macTableItems = new();
+        private readonly ObservableCollection<AclRule> _aclRuleItems = new();
 
         private readonly AntiLoopService _antiLoopService = new();
         private readonly AclService _aclService = new();
@@ -58,6 +60,7 @@ namespace psip
             InitializeComponent();
 
             MacTableDataGrid.ItemsSource = _macTableItems;
+            AclRulesGrid.ItemsSource = _aclRuleItems;
             DataContext = this;
 
             InitializePorts();
@@ -663,12 +666,46 @@ namespace psip
 
         private void AddAclRuleClick(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            var rule = new AclRule
+            {
+                Priority = int.TryParse(AclPriorityBox.Text, out var p) ? p : 0,
+                Direction = (AclDirectionBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
+                    { "IN" => AclDirection.In, "OUT" => AclDirection.Out, _ => AclDirection.Any },
+                Port = (AclPortBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
+                    { "1" => "1", "2" => "2", _ => "any" },
+                Protocol = (AclProtoBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
+                { "ip" => AclProtocol.Ip, "icmp" => AclProtocol.Icmp,
+                    "tcp" => AclProtocol.Tcp, "udp" => AclProtocol.Udp, _ => AclProtocol.Any },
+                SrcMac = string.IsNullOrWhiteSpace(AclSrcMacBox.Text) ? "any" : AclSrcMacBox.Text,
+                DstMac = string.IsNullOrWhiteSpace(AclDstMacBox.Text) ? "any" : AclDstMacBox.Text,
+                SrcIp = string.IsNullOrWhiteSpace(AclSrcIpBox.Text) ? "any" : AclSrcIpBox.Text,
+                DstIp = string.IsNullOrWhiteSpace(AclDstIpBox.Text) ? "any" : AclDstIpBox.Text,
+                SrcPort = string.IsNullOrWhiteSpace(AclSrcPortBox.Text) ? "any" : AclSrcPortBox.Text,
+                DstPort = string.IsNullOrWhiteSpace(AclDstPortBox.Text) ? "any" : AclDstPortBox.Text,
+                IcmpType = (AclIcmpTypeBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
+                    { "echo" => AclIcmpType.Echo, "echo-reply" => AclIcmpType.EchoReply, _ => AclIcmpType.Any },
+                Action = (AclActionBox.SelectedItem as ComboBoxItem)?.Content.ToString() == "PERMIT"
+                    ? AclAction.Permit : AclAction.Deny
+            };
+            _aclService.AddRule(rule);
+            RefreshAclGrid();
         }
 
         private void RemoveAclRuleClick(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            if (AclRulesGrid.SelectedItem is not AclRule selected) return;
+            _aclService.RemoveRule(selected);
+            RefreshAclGrid();
+        }
+        
+        private void RefreshAclGrid()
+        {
+            Dispatcher.BeginInvoke(() =>
+            {
+                _aclRuleItems.Clear();
+                foreach (var r in _aclService.GetRules())
+                    _aclRuleItems.Add(r);
+            });
         }
     }
 }

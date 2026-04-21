@@ -11,8 +11,7 @@ public class AclService
     {
         lock (_rulesLock)
         {
-            if (rule.Priority == 0)
-                rule.Priority = _rules.Count == 0 ? 10 : _rules.Max(r => r.Priority) + 10;
+            if (rule.Priority == 0) rule.Priority = _rules.Count == 0 ? 10 : _rules.Max(r => r.Priority) + 10;
             _rules.Add(rule);
         }
     }
@@ -24,8 +23,7 @@ public class AclService
 
     public IReadOnlyList<AclRule> GetRules()
     {
-        lock (_rulesLock)
-            return _rules.OrderBy(r => r.Priority).ToList();
+        lock (_rulesLock) return _rules.OrderBy(r => r.Priority).ToList();
     }
     
     public bool CheckPacket(Packet packet, int portNumber, bool isIn)

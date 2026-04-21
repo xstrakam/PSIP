@@ -67,6 +67,10 @@ namespace psip
             CdpNeighborsGrid.ItemsSource = _cdpNeighborItems;
             
             DataContext = this;
+            
+            CdpStartButton.IsEnabled = false;
+            CdpStopButton.IsEnabled = false;
+            StopCaptureButton.IsEnabled = false;
 
             InitializePorts();
             InitializeStats();
@@ -117,6 +121,7 @@ namespace psip
             Port1ComboBox.IsEnabled = false;
             Port2ComboBox.IsEnabled = false;
             StartCaptureButton.IsEnabled = false;
+            CdpStartButton.IsEnabled = true;
 
             _port1 = port1;
             _port2 = port2;
@@ -144,12 +149,16 @@ namespace psip
             Port1ComboBox.IsEnabled = true;
             Port2ComboBox.IsEnabled = true;
             StartCaptureButton.IsEnabled = true;
+            CdpStartButton.IsEnabled = false;
+            CdpStopButton.IsEnabled = false;
 
             _agingTimer?.Stop();
             _guiRefreshTimer?.Stop();
 
             StopPortSafely(_port1);
             StopPortSafely(_port2);
+            
+            _cdpService.Stop();
 
             _ports.Clear();
             _linkStates.Clear();
@@ -503,6 +512,7 @@ namespace psip
             }
             
             _cdpService.TickAging();
+            RefreshCdpGrid();
         }
 
         private void OnGuiRefreshTick(object? sender, ElapsedEventArgs e)
@@ -791,6 +801,17 @@ namespace psip
             if (int.TryParse(CdpTimerBox.Text, out var interval) && interval > 0) _cdpService.SendInterval = interval;
 
             if (int.TryParse(CdpHoldTimeBox.Text, out var hold) && hold > 0) _cdpService.HoldTime = hold;
+        }
+
+        private void RefreshCdpGrid()
+        {
+            var cdpSnapshot = _cdpService.GetNeighbors();
+            Dispatcher.BeginInvoke(() =>
+            {
+                _cdpNeighborItems.Clear();
+                foreach (var n in cdpSnapshot)
+                    _cdpNeighborItems.Add(n);
+            });
         }
     }
 }

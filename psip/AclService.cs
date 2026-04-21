@@ -54,7 +54,7 @@ public class AclService
                 return rule.Action != AclAction.Deny;
             }
             
-            return _rules.Count == 0; // implicit deny len, ak je aspon 1 acl pravidlo
+            return _rules.Count == 0; // implicit deny len ak je aspon 1 acl pravidlo
         }
     }
     
@@ -114,10 +114,10 @@ public class AclService
 
         if (!int.TryParse(parts[1], out var prefixLen)) return false;
 
-        var addrBytes = System.Net.IPAddress.Parse(ip).GetAddressBytes();
-        var netBytes  = System.Net.IPAddress.Parse(parts[0]).GetAddressBytes();
+        var addrBytes= System.Net.IPAddress.Parse(ip).GetAddressBytes();
+        var netBytes= System.Net.IPAddress.Parse(parts[0]).GetAddressBytes();
         
-        var fullBytes  = prefixLen / 8;
+        var fullBytes = prefixLen / 8;
         var remainBits = prefixLen % 8;
 
         for (var i = 0; i < fullBytes; i++)

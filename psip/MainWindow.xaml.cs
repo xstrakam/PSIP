@@ -26,8 +26,8 @@ namespace psip
         private LibPcapLiveDevice? _port2;
         private List<LibPcapLiveDevice> _ports = [];
 
-        private string _port1Name = "";
-        private string _port2Name = "";
+        private string _port1Name;
+        private string _port2Name;
 
         private int _agingTime = 180;
         private System.Timers.Timer? _agingTimer;
@@ -43,11 +43,14 @@ namespace psip
 
         private readonly Dictionary<string, MacEntry> _macTable = new();
         private readonly Lock _macTableLock = new();
-        private readonly ObservableCollection<MacEntry> _macTableItems = new();
-        private readonly ObservableCollection<AclRule> _aclRuleItems = new();
+        
+        private readonly ObservableCollection<MacEntry> _macTableItems = [];
+        private readonly ObservableCollection<AclRule> _aclRuleItems = [];
+        private readonly ObservableCollection<CdpNeighbor> _cdpNeighborItems = [];
 
         private readonly AntiLoopService _antiLoopService = new();
         private readonly AclService _aclService = new();
+        private readonly CdpService _cdpService = new();
 
         private enum PortLinkState { Up, PendingDown, Down }
         private readonly Dictionary<LibPcapLiveDevice, PortLinkState> _linkStates = new();
@@ -61,6 +64,8 @@ namespace psip
 
             MacTableDataGrid.ItemsSource = _macTableItems;
             AclRulesGrid.ItemsSource = _aclRuleItems;
+            CdpNeighborsGrid.ItemsSource = _cdpNeighborItems;
+            
             DataContext = this;
 
             InitializePorts();
@@ -455,26 +460,21 @@ namespace psip
         {
             if (_restartInProgress) return;
             if (sender is not LibPcapLiveDevice port) return;
+            
+            var raw = e.GetPacket();
+            var data = raw.Data;
 
-            try
-            {
-                var raw = e.GetPacket();
-                var data = raw.Data;
+            if (!_antiLoopService.Check(data))
+                return;
 
-                if (!_antiLoopService.Check(data))
-                    return;
-
-                var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
-                
-                if(!_aclService.CheckPacket(packet, GetPortNumberFromPort(port), true)) return;
-                
-                LearnMac(packet, port);
-                ForwardMac(packet, data, port);
-            }
-            catch (Exception ex)
-            {
-                // Console.WriteLine($"OnPacketReceived failed: {ex.Message}");
-            }
+            var packet = Packet.ParsePacket(raw.LinkLayerType, raw.Data);
+            
+            if (CheckCdpFrame(packet, port)) return;
+            
+            if (!_aclService.CheckPacket(packet, GetPortNumberFromPort(port), true)) return;
+            
+            LearnMac(packet, port);
+            ForwardMac(packet, data, port);
         }
 
         private void OnAgingTick(object? sender, ElapsedEventArgs e)
@@ -501,6 +501,8 @@ namespace psip
                     _macTable.Remove(key);
                 }
             }
+            
+            _cdpService.TickAging();
         }
 
         private void OnGuiRefreshTick(object? sender, ElapsedEventArgs e)
@@ -676,18 +678,25 @@ namespace psip
             
             var direction = (AclDirectionBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
             {
-                "IN" => AclDirection.In, "OUT" => AclDirection.Out, _ => AclDirection.Any
+                "IN" => AclDirection.In, 
+                "OUT" => AclDirection.Out, 
+                _ => AclDirection.Any
             };
             
             var port = (AclPortBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
             {
-                "1" => "1", "2" => "2", _ => "any"
+                "1" => "1", 
+                "2" => "2", 
+                _ => "any"
             };
             
             var protocol = (AclProtoBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
             {
-                "ip" => AclProtocol.Ip, "icmp" => AclProtocol.Icmp,
-                "tcp" => AclProtocol.Tcp, "udp" => AclProtocol.Udp, _ => AclProtocol.Any
+                "ip" => AclProtocol.Ip, 
+                "icmp" => AclProtocol.Icmp,
+                "tcp" => AclProtocol.Tcp, 
+                "udp" => AclProtocol.Udp, 
+                _ => AclProtocol.Any
             };
             
             var srcMac = string.IsNullOrWhiteSpace(AclSrcMacBox.Text) ? "any" : AclSrcMacBox.Text;
@@ -699,7 +708,9 @@ namespace psip
             
             var icmpType = (AclIcmpTypeBox.SelectedItem as ComboBoxItem)?.Content.ToString() switch
             {
-                "echo" => AclIcmpType.Echo, "echo-reply" => AclIcmpType.EchoReply, _ => AclIcmpType.Any
+                "echo" => AclIcmpType.Echo, 
+                "echo-reply" => AclIcmpType.EchoReply, 
+                _ => AclIcmpType.Any
             };
             
             var action = (AclActionBox.SelectedItem as ComboBoxItem)?.Content.ToString() == "PERMIT"
@@ -742,11 +753,44 @@ namespace psip
                     _aclRuleItems.Add(r);
             });
         }
-        
+
+        private bool CheckCdpFrame(Packet packet, LibPcapLiveDevice port)
+        {
+            var eth = packet.Extract<EthernetPacket>();
+            if (eth?.PayloadData is { } pl && _cdpService.IsRunning)
+            {
+                var dst = eth.DestinationHardwareAddress.ToString().ToUpper();
+                if (dst == "01000CCCCCCC")
+                {
+                    _cdpService.ParseFrame(pl, GetPortNumberFromPort(port));
+                    return true; 
+                }
+            }
+
+            return false;
+        }
 
         private void CdpStartClick(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            _cdpService.Start(_ports);
+            CdpStartButton.IsEnabled = false;
+            CdpStopButton.IsEnabled = true;
+        }
+
+        private void CdpStopClick(object sender, RoutedEventArgs e)
+        {
+            _cdpService.Stop();
+            CdpStopButton.IsEnabled = false;
+            CdpStartButton.IsEnabled = true;
+        }
+
+        private void CdpSetClick(object sender, RoutedEventArgs e)
+        { 
+            _cdpService.Hostname = string.IsNullOrWhiteSpace(CdpHostnameBox.Text) ? Environment.MachineName : CdpHostnameBox.Text;
+
+            if (int.TryParse(CdpTimerBox.Text, out var interval) && interval > 0) _cdpService.SendInterval = interval;
+
+            if (int.TryParse(CdpHoldTimeBox.Text, out var hold) && hold > 0) _cdpService.HoldTime = hold;
         }
     }
 }

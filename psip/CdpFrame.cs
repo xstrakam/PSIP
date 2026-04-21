@@ -5,10 +5,20 @@ namespace psip;
 
 public class CdpFrame
 {
+    private readonly string _hostname;
+    private readonly byte _ttl;
+
+    public CdpFrame(string hostname, int ttl = 180)
+    {
+        _hostname = hostname;
+        _ttl = (byte)Math.Min(ttl, 255);
+    }
+    
     public List<byte> CreateFrame(LibPcapLiveDevice port, int portNumber)
     {
         List<byte> frame = [];
-    
+        
+        // Ethernet header
         frame.AddRange([0x01,0x00,0x0C,0xCC,0xCC,0xCC]); // dstMac
         frame.AddRange(port.Interface.MacAddress.GetAddressBytes()); // srcMac
         
@@ -23,10 +33,10 @@ public class CdpFrame
         frame.AddRange([0x00, 0x00, 0x0C, 0x20, 0x00]);
 
         // CDP PDU: version, TTL, checksum (2B placeholder)
-        int cdpStart = frame.Count;
-        frame.AddRange([0x02, 0xB4, 0x00, 0x00]);
+        var cdpStart = frame.Count;
+        frame.AddRange([0x02, _ttl, 0x00, 0x00]);
         
-        var deviceId = BuildTlv(0x0001, Encoding.UTF8.GetBytes(System.Environment.MachineName));
+        var deviceId = BuildTlv(0x0001, Encoding.UTF8.GetBytes(_hostname));
         var portId = BuildTlv(0x0003, Encoding.UTF8.GetBytes("Port" + portNumber));
         
         frame.AddRange(deviceId);

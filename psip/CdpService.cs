@@ -98,6 +98,8 @@ public class CdpService
         }
 
         if (string.IsNullOrEmpty(neighbor.DeviceId)) return;
+        
+        if (neighbor.DeviceId == Hostname) return;
 
         _neighbors.AddOrUpdate(neighbor.DeviceId, neighbor, (_, existing) =>
         {

@@ -69,15 +69,25 @@ public class CdpFrame
         ];
     }
     
+    // 1's complement checksum
     private static ushort ComputeChecksum(byte[] data, int offset, int length)
     {
         uint sum = 0;
         for (var i = offset; i < offset + length - 1; i += 2)
+        {
             sum += (uint)((data[i] << 8) | data[i + 1]);
+        }
+        
         if (length % 2 != 0)
+        {
             sum += (uint)(data[offset + length - 1] << 8);
+        }
+
         while (sum >> 16 != 0)
+        {
             sum = (sum & 0xFFFF) + (sum >> 16);
+        }
+            
         return (ushort)~sum;
     }
 }

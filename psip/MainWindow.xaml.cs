@@ -386,7 +386,7 @@ namespace psip
                 }
                 catch (Exception ex)
                 {
-                    // Console.WriteLine($"SendUnknownUnicast failed on {port.Name}: {ex.Message}");
+                    
                 }
             }
         }
@@ -402,7 +402,7 @@ namespace psip
             }
             catch (Exception ex)
             {
-                // Console.WriteLine($"SendUnicast failed on {destPort.Name}: {ex.Message}");
+                
             }
         }
 

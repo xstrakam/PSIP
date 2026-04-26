@@ -274,11 +274,10 @@
                           GridLinesVisibility="All"
                           Margin="0,0,0,10">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="Device ID"   Binding="{Binding DeviceId}"   Width="160"/>
-                        <DataGridTextColumn Header="Local Port"  Binding="{Binding LocalPort}"  Width="80"/>
+                        <DataGridTextColumn Header="Device ID"   Binding="{Binding DeviceId}"   Width="180"/>
+                        <DataGridTextColumn Header="Local Port"  Binding="{Binding LocalPort}"  Width="100"/>
                         <DataGridTextColumn Header="Remote Port" Binding="{Binding RemotePort}" Width="120"/>
-                        <DataGridTextColumn Header="Platform"    Binding="{Binding Platform}"   Width="160"/>
-                        <DataGridTextColumn Header="Hold Time"   Binding="{Binding HoldTime}"   Width="80"/>
+                        <DataGridTextColumn Header="Hold Time"   Binding="{Binding HoldTime}"   Width="120"/>
                     </DataGrid.Columns>
                 </DataGrid>
 

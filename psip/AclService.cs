@@ -121,7 +121,9 @@ public class AclService
         var remainBits = prefixLen % 8;
 
         for (var i = 0; i < fullBytes; i++)
+        {
             if (addrBytes[i] != netBytes[i]) return false;
+        }
         
         if (remainBits > 0)
         {

@@ -62,7 +62,7 @@ public class CdpService
         if (payload[3] != 0x00 || payload[4] != 0x00 || payload[5] != 0x0C) return;
         if (payload[6] != 0x20 || payload[7] != 0x00) return;
 
-        // CDP PDU: version(1) + TTL(1) + checksum(2) = 4B header
+        // CDP PDU
         const int cdpOffset = 8;
         if (payload.Length < cdpOffset + 4) return;
 
@@ -99,7 +99,7 @@ public class CdpService
 
         if (string.IsNullOrEmpty(neighbor.DeviceId)) return;
         
-        if (neighbor.DeviceId == Hostname) return;
+        if (neighbor.DeviceId == Hostname) return; // aby v cdp table neukazovalo tento switch
 
         _neighbors.AddOrUpdate(neighbor.DeviceId, neighbor, (_, existing) =>
         {

@@ -38,9 +38,13 @@ public class CdpFrame
         
         var deviceId = BuildTlv(0x0001, Encoding.UTF8.GetBytes(_hostname));
         var portId = BuildTlv(0x0003, Encoding.UTF8.GetBytes("Port" + portNumber));
+        var capabilities = BuildTlv(0x0004, new byte[] { 0x00, 0x00, 0x00, 0x08 }); // 0x00000008 - Switch (S)
+        var platform = BuildTlv(0x0006, Encoding.UTF8.GetBytes("Software Switch"));
         
         frame.AddRange(deviceId);
         frame.AddRange(portId);
+        frame.AddRange(capabilities);
+        frame.AddRange(platform);
         
         var payloadLength = (ushort)(frame.Count - lengthOffset - 2);
         frame[lengthOffset] = (byte)(payloadLength >> 8);
